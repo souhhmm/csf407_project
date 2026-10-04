@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 from scipy import sparse
 
-from dna_language.analysis import analyze_dataset
+from src.analysis import analyze_dataset
 
 
 def test_full_pipeline_saves_aligned_representations_and_minimal_charts(tmp_path):

@@ -6,7 +6,7 @@ import json
 
 import pytest
 
-from dna_language import data
+from src import data
 
 
 def _write_csv(path, records):

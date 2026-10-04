@@ -5,7 +5,7 @@ import pytest
 from gensim.models import Word2Vec
 from scipy import sparse
 
-from dna_language.representations import (
+from src.representations import (
     compare_contexts,
     fit_representations,
     pool_vectors,

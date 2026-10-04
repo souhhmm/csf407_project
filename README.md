@@ -140,5 +140,5 @@ The checks cover word creation, unknown-letter handling, data verification and s
 To format the Python code with Black:
 
 ```bash
-.venv/bin/python -m black --workers 1 run.py dna_language tests
+.venv/bin/python -m black --workers 1 run.py src tests
 ```

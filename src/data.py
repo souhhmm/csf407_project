@@ -10,7 +10,7 @@ from collections import Counter
 from pathlib import Path
 from typing import Iterator, List, Tuple
 
-from dna_language.sequences import clean_sequence
+from src.sequences import clean_sequence
 
 
 DATASET_URL = "https://zenodo.org/records/3678563"

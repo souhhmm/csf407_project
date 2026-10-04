@@ -9,21 +9,21 @@ import numpy as np
 import pandas as pd
 from scipy import sparse
 
-from dna_language.data import file_digest, load_dataset
-from dna_language.plots import (
+from src.data import file_digest, load_dataset
+from src.plots import (
     TITLES,
     plot_k_comparison,
     plot_sequence_spaces,
     plot_sequence_statistics,
     plot_word_frequencies,
 )
-from dna_language.representations import (
+from src.representations import (
     compare_contexts,
     fit_representations,
     nearest_words,
     project_to_two_dimensions,
 )
-from dna_language.sequences import sequence_statistics, word_segments
+from src.sequences import sequence_statistics, word_segments
 
 
 def _word_tables(representations: dict, records: list) -> tuple:

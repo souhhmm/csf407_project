@@ -2,7 +2,7 @@ import math
 
 import pytest
 
-from dna_language.sequences import (
+from src.sequences import (
     clean_sequence,
     make_words,
     sequence_statistics,

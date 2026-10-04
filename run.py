@@ -70,7 +70,7 @@ def main() -> int:
     os.environ.setdefault("XDG_CACHE_HOME", str(Path(".cache").resolve()))
     try:
         if args.command in ("prepare", "all"):
-            from dna_language.data import prepare_dataset
+            from src.data import prepare_dataset
 
             input_path = prepare_dataset(
                 args.data_dir, args.per_class, args.seed, args.force
@@ -78,7 +78,7 @@ def main() -> int:
         else:
             input_path = args.input
         if args.command in ("analyze", "all"):
-            from dna_language.analysis import analyze_dataset
+            from src.analysis import analyze_dataset
 
             analyze_dataset(
                 input_path=input_path,
