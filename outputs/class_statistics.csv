@@ -1,0 +1,3 @@
+label,sequences,minimum_length,maximum_length,mean_length,mean_gc_fraction,ambiguous_letters
+nonpathogenic,5000,250,250,250.0,0.47844192275576536,1500
+pathogenic,5000,250,250,250.0,0.4691875565256417,1555

@@ -1,0 +1,266 @@
+{
+  "scope": "project steps 1 through 3 only",
+  "input_path": "/Users/soham/Documents/csf407_project/data/processed/sequences.csv",
+  "input_sha256": "ca379fd75ccb78002abfcc59e189587bfe296c6328284a6ad1fc196a4f7d0400",
+  "input_audit": {
+    "input_rows": 10000,
+    "duplicate_rows_removed": 0
+  },
+  "source_manifest": {
+    "dataset": "DeePaC IMG bacterial DNA reads",
+    "dataset_url": "https://zenodo.org/records/3678563",
+    "paper_url": "https://doi.org/10.1093/bioinformatics/btz541",
+    "source_split": "validation",
+    "alphabet": "dna",
+    "per_class": 5000,
+    "seed": 42,
+    "sampling": "random reservoir candidates (2x requested), deduplication, balanced random selection",
+    "sources": [
+      {
+        "filename": "nonpathogenic_val.fasta.gz",
+        "label": "nonpathogenic",
+        "md5": "696379f88117ddd2f4512d078abde17f",
+        "url": "https://zenodo.org/records/3678563/files/nonpathogenic_val.fasta.gz?download=1",
+        "sha256": "8cb7a0612ef97cd5eadebf5275b9784caf0a71b01ff508463aabfebf923d647d",
+        "audit": {
+          "records_read": 1250005,
+          "records_with_ambiguous_letters": 324799,
+          "eligible_records": 1250005
+        }
+      },
+      {
+        "filename": "pathogenic_val.fasta.gz",
+        "label": "pathogenic",
+        "md5": "6b2e5c71634bd48a4c607e0979c09b2b",
+        "url": "https://zenodo.org/records/3678563/files/pathogenic_val.fasta.gz?download=1",
+        "sha256": "0aff6e6952df7f109c79ceb5129f1f49fb4d2f68cf5e1e0c385a411726cde4c8",
+        "audit": {
+          "records_read": 1250020,
+          "eligible_records": 1250020,
+          "records_with_ambiguous_letters": 325581
+        }
+      }
+    ],
+    "sample_audit": {
+      "candidate_records": 20000,
+      "repeated_candidate_records_removed": 0,
+      "conflicting_candidate_records_removed": 0,
+      "final_class_counts": {
+        "pathogenic": 5000,
+        "nonpathogenic": 5000
+      }
+    },
+    "csv_sha256": "ca379fd75ccb78002abfcc59e189587bfe296c6328284a6ad1fc196a4f7d0400",
+    "label_meaning": "Labels belong to source organisms, not to individual disease-causing fragments."
+  },
+  "alphabet": "dna",
+  "sequence_count": 10000,
+  "class_counts": {
+    "pathogenic": 5000,
+    "nonpathogenic": 5000
+  },
+  "minimum_length": 250,
+  "maximum_length": 250,
+  "sequences_with_ambiguous_letters": 2594,
+  "settings": {
+    "ks": [
+      3,
+      4,
+      6
+    ],
+    "vector_size": 64,
+    "window": 5,
+    "epochs": 10,
+    "seed": 42,
+    "workers": 1
+  },
+  "software": {
+    "numpy": "1.26.4",
+    "scipy": "1.13.1",
+    "pandas": "2.2.3",
+    "scikit-learn": "1.6.1",
+    "gensim": "4.3.3",
+    "matplotlib": "3.9.4"
+  },
+  "python_version": "3.9.6",
+  "word_sizes": [
+    {
+      "k": 3,
+      "status": "complete",
+      "observed_words": 64,
+      "possible_words": 64,
+      "vocabulary_coverage": 1.0,
+      "mean_sequence_coverage": 0.931021875,
+      "mean_distinct_words": 59.5854,
+      "total_occurrences": 2470966,
+      "skipped_windows": 9034,
+      "empty_sequences": 0,
+      "single_occurrence_words": 0,
+      "word_entropy_bits": 5.959353327989099,
+      "most_common_word": "TTT",
+      "most_common_count": 69453,
+      "least_common_word": "CTA",
+      "least_common_count": 19947,
+      "has_training_context": true,
+      "projections": {
+        "counts": {
+          "method": "TruncatedSVD",
+          "captured_variation": 0.27528116106987,
+          "status": "ok"
+        },
+        "tfidf": {
+          "method": "TruncatedSVD",
+          "captured_variation": 0.26063933968544006,
+          "status": "ok"
+        },
+        "mean_vectors": {
+          "method": "PCA",
+          "captured_variation": 0.6954583525657654,
+          "status": "ok"
+        },
+        "weighted_vectors": {
+          "method": "PCA",
+          "captured_variation": 0.6968875527381897,
+          "status": "ok"
+        }
+      },
+      "context_comparison": {
+        "standard": {
+          "sequences_examined": 200,
+          "words_compared": 64,
+          "nonoverlapping": false,
+          "pairs": 2016,
+          "correlation": 0.6134498792541585,
+          "shuffled_correlation": -0.033164434148757055
+        },
+        "nonoverlapping": {
+          "sequences_examined": 200,
+          "words_compared": 64,
+          "nonoverlapping": true,
+          "pairs": 2016,
+          "correlation": 0.33545923973198755,
+          "shuffled_correlation": -0.02541374218904053
+        }
+      }
+    },
+    {
+      "k": 4,
+      "status": "complete",
+      "observed_words": 256,
+      "possible_words": 256,
+      "vocabulary_coverage": 1.0,
+      "mean_sequence_coverage": 0.554561328125,
+      "mean_distinct_words": 141.9677,
+      "total_occurrences": 2458044,
+      "skipped_windows": 11956,
+      "empty_sequences": 0,
+      "single_occurrence_words": 0,
+      "word_entropy_bits": 7.929112321313676,
+      "most_common_word": "TTTT",
+      "most_common_count": 23878,
+      "least_common_word": "CTAG",
+      "least_common_count": 1738,
+      "has_training_context": true,
+      "projections": {
+        "counts": {
+          "method": "TruncatedSVD",
+          "captured_variation": 0.133083313703537,
+          "status": "ok"
+        },
+        "tfidf": {
+          "method": "TruncatedSVD",
+          "captured_variation": 0.11502860486507416,
+          "status": "ok"
+        },
+        "mean_vectors": {
+          "method": "PCA",
+          "captured_variation": 0.6201872825622559,
+          "status": "ok"
+        },
+        "weighted_vectors": {
+          "method": "PCA",
+          "captured_variation": 0.6091669201850891,
+          "status": "ok"
+        }
+      },
+      "context_comparison": {
+        "standard": {
+          "sequences_examined": 200,
+          "words_compared": 256,
+          "nonoverlapping": false,
+          "pairs": 3000,
+          "correlation": 0.6688833867648206,
+          "shuffled_correlation": -0.03371738930567852
+        },
+        "nonoverlapping": {
+          "sequences_examined": 200,
+          "words_compared": 256,
+          "nonoverlapping": true,
+          "pairs": 3000,
+          "correlation": 0.27187932944076076,
+          "shuffled_correlation": -0.007669631967553348
+        }
+      }
+    },
+    {
+      "k": 6,
+      "status": "complete",
+      "observed_words": 4096,
+      "possible_words": 4096,
+      "vocabulary_coverage": 1.0,
+      "mean_sequence_coverage": 0.0559885498046875,
+      "mean_distinct_words": 229.3291,
+      "total_occurrences": 2432340,
+      "skipped_windows": 17660,
+      "empty_sequences": 0,
+      "single_occurrence_words": 0,
+      "word_entropy_bits": 11.860360727732667,
+      "most_common_word": "TTTTTT",
+      "most_common_count": 2400,
+      "least_common_word": "CCTAGG",
+      "least_common_count": 53,
+      "has_training_context": true,
+      "projections": {
+        "counts": {
+          "method": "TruncatedSVD",
+          "captured_variation": 0.018426526337862015,
+          "status": "ok"
+        },
+        "tfidf": {
+          "method": "TruncatedSVD",
+          "captured_variation": 0.015141259878873825,
+          "status": "ok"
+        },
+        "mean_vectors": {
+          "method": "PCA",
+          "captured_variation": 0.47843432426452637,
+          "status": "ok"
+        },
+        "weighted_vectors": {
+          "method": "PCA",
+          "captured_variation": 0.4602794647216797,
+          "status": "ok"
+        }
+      },
+      "context_comparison": {
+        "standard": {
+          "sequences_examined": 200,
+          "words_compared": 256,
+          "nonoverlapping": false,
+          "pairs": 3000,
+          "correlation": 0.6289484417949335,
+          "shuffled_correlation": 0.023205595594407137
+        },
+        "nonoverlapping": {
+          "sequences_examined": 200,
+          "words_compared": 256,
+          "nonoverlapping": true,
+          "pairs": 3000,
+          "correlation": 0.33243042382500065,
+          "shuffled_correlation": 0.0024351451610840034
+        }
+      }
+    }
+  ],
+  "elapsed_seconds": 77.1832045
+}

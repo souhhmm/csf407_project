@@ -6,5 +6,4 @@ __pycache__/
 *.part
 /data/raw/
 /data/processed/
-/outputs*/
 .DS_Store

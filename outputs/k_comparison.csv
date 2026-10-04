@@ -1,0 +1,4 @@
+k,status,observed_words,possible_words,vocabulary_coverage,mean_sequence_coverage,mean_distinct_words,total_occurrences,skipped_windows,empty_sequences,single_occurrence_words,word_entropy_bits,most_common_word,most_common_count,least_common_word,least_common_count,has_training_context
+3,complete,64,64,1.0,0.931021875,59.5854,2470966,9034,0,0,5.959353327989099,TTT,69453,CTA,19947,True
+4,complete,256,256,1.0,0.554561328125,141.9677,2458044,11956,0,0,7.929112321313676,TTTT,23878,CTAG,1738,True
+6,complete,4096,4096,1.0,0.0559885498046875,229.3291,2432340,17660,0,0,11.860360727732667,TTTTTT,2400,CCTAGG,53,True
