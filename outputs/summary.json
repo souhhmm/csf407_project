@@ -262,5 +262,214 @@
       }
     }
   ],
-  "elapsed_seconds": 77.1832045
+  "elapsed_seconds": 77.1832045,
+  "additional_analysis": {
+    "status": "complete",
+    "frequency_concentration": [
+      {
+        "k": 3,
+        "words_in_top_group": 7,
+        "observed_words": 64,
+        "top_group_occurrence_fraction": 0.1572328393025237
+      },
+      {
+        "k": 4,
+        "words_in_top_group": 26,
+        "observed_words": 256,
+        "top_group_occurrence_fraction": 0.16254753779834563
+      },
+      {
+        "k": 6,
+        "words_in_top_group": 410,
+        "observed_words": 4096,
+        "top_group_occurrence_fraction": 0.1956913918284242
+      }
+    ],
+    "composition_correlations": [
+      {
+        "k": 3,
+        "representation": "counts",
+        "coordinate": "coordinate_1",
+        "sequences": 10000,
+        "gc_rank_correlation": -0.8214026574792577
+      },
+      {
+        "k": 3,
+        "representation": "counts",
+        "coordinate": "coordinate_2",
+        "sequences": 10000,
+        "gc_rank_correlation": -0.9950179239254008
+      },
+      {
+        "k": 3,
+        "representation": "tfidf",
+        "coordinate": "coordinate_1",
+        "sequences": 10000,
+        "gc_rank_correlation": -0.13292448887571764
+      },
+      {
+        "k": 3,
+        "representation": "tfidf",
+        "coordinate": "coordinate_2",
+        "sequences": 10000,
+        "gc_rank_correlation": -0.9957825234689553
+      },
+      {
+        "k": 3,
+        "representation": "mean_vectors",
+        "coordinate": "coordinate_1",
+        "sequences": 10000,
+        "gc_rank_correlation": 0.996835550681496
+      },
+      {
+        "k": 3,
+        "representation": "mean_vectors",
+        "coordinate": "coordinate_2",
+        "sequences": 10000,
+        "gc_rank_correlation": -0.00779335871350281
+      },
+      {
+        "k": 3,
+        "representation": "weighted_vectors",
+        "coordinate": "coordinate_1",
+        "sequences": 10000,
+        "gc_rank_correlation": 0.9968965685462351
+      },
+      {
+        "k": 3,
+        "representation": "weighted_vectors",
+        "coordinate": "coordinate_2",
+        "sequences": 10000,
+        "gc_rank_correlation": -0.008297137291198372
+      },
+      {
+        "k": 4,
+        "representation": "counts",
+        "coordinate": "coordinate_1",
+        "sequences": 10000,
+        "gc_rank_correlation": -0.75217268074661
+      },
+      {
+        "k": 4,
+        "representation": "counts",
+        "coordinate": "coordinate_2",
+        "sequences": 10000,
+        "gc_rank_correlation": -0.9920258361371787
+      },
+      {
+        "k": 4,
+        "representation": "tfidf",
+        "coordinate": "coordinate_1",
+        "sequences": 10000,
+        "gc_rank_correlation": -0.26519437935561985
+      },
+      {
+        "k": 4,
+        "representation": "tfidf",
+        "coordinate": "coordinate_2",
+        "sequences": 10000,
+        "gc_rank_correlation": -0.9940000144961243
+      },
+      {
+        "k": 4,
+        "representation": "mean_vectors",
+        "coordinate": "coordinate_1",
+        "sequences": 10000,
+        "gc_rank_correlation": 0.9961784901478119
+      },
+      {
+        "k": 4,
+        "representation": "mean_vectors",
+        "coordinate": "coordinate_2",
+        "sequences": 10000,
+        "gc_rank_correlation": -0.013134461043892137
+      },
+      {
+        "k": 4,
+        "representation": "weighted_vectors",
+        "coordinate": "coordinate_1",
+        "sequences": 10000,
+        "gc_rank_correlation": 0.9953499916385562
+      },
+      {
+        "k": 4,
+        "representation": "weighted_vectors",
+        "coordinate": "coordinate_2",
+        "sequences": 10000,
+        "gc_rank_correlation": -0.012954873816015655
+      },
+      {
+        "k": 6,
+        "representation": "counts",
+        "coordinate": "coordinate_1",
+        "sequences": 10000,
+        "gc_rank_correlation": -0.6481604889078372
+      },
+      {
+        "k": 6,
+        "representation": "counts",
+        "coordinate": "coordinate_2",
+        "sequences": 10000,
+        "gc_rank_correlation": -0.9859873880935754
+      },
+      {
+        "k": 6,
+        "representation": "tfidf",
+        "coordinate": "coordinate_1",
+        "sequences": 10000,
+        "gc_rank_correlation": -0.5942392733517516
+      },
+      {
+        "k": 6,
+        "representation": "tfidf",
+        "coordinate": "coordinate_2",
+        "sequences": 10000,
+        "gc_rank_correlation": 0.9910929154968592
+      },
+      {
+        "k": 6,
+        "representation": "mean_vectors",
+        "coordinate": "coordinate_1",
+        "sequences": 10000,
+        "gc_rank_correlation": 0.9958485191684606
+      },
+      {
+        "k": 6,
+        "representation": "mean_vectors",
+        "coordinate": "coordinate_2",
+        "sequences": 10000,
+        "gc_rank_correlation": 0.008311527678367962
+      },
+      {
+        "k": 6,
+        "representation": "weighted_vectors",
+        "coordinate": "coordinate_1",
+        "sequences": 10000,
+        "gc_rank_correlation": 0.9949041012783308
+      },
+      {
+        "k": 6,
+        "representation": "weighted_vectors",
+        "coordinate": "coordinate_2",
+        "sequences": 10000,
+        "gc_rank_correlation": 0.007897122565574117
+      }
+    ],
+    "class_comparison": {
+      "k": 4,
+      "status": "complete",
+      "numerator": "pathogenic",
+      "denominator": "nonpathogenic",
+      "minimum_count_per_class": 20
+    },
+    "word_order": {
+      "k": 4,
+      "status": "complete",
+      "repeats": 10,
+      "seed": 42,
+      "minimum_count": 20,
+      "plot_created": true
+    },
+    "elapsed_seconds": 3.253159958
+  }
 }

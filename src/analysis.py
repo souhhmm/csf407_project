@@ -10,6 +10,7 @@ import pandas as pd
 from scipy import sparse
 
 from src.data import file_digest, load_dataset
+from src.exploration import create_extra_analysis
 from src.plots import (
     TITLES,
     plot_k_comparison,
@@ -79,6 +80,124 @@ def _save_representations(
 
 def _number(value):
     return "not available" if value is None else format(value, ".3f")
+
+
+def _extra_report(analysis: dict) -> list:
+    if analysis.get("status") != "complete":
+        return []
+    rows = [
+        "",
+        "## A closer look at the patterns",
+        "",
+        "### How concentrated are word frequencies?",
+        "",
+        "This curve starts with the most common words and adds progressively rarer words. A curve above the diagonal means some words contribute more occurrences than others. Each word size uses its own observed vocabulary. This is a descriptive comparison, not a fitted law of language.",
+        "",
+        "![Frequency concentration](figures/frequency_concentration.png)",
+        "",
+        "| Word size | Words in the top group | Share of all occurrences |",
+        "| --- | --- | --- |",
+    ]
+    for result in analysis["frequency_concentration"]:
+        rows.append(
+            "| "
+            + str(result["k"])
+            + " | "
+            + str(result["words_in_top_group"])
+            + " of "
+            + str(result["observed_words"])
+            + " | "
+            + format(result["top_group_occurrence_fraction"], ".1%")
+            + " |"
+        )
+    rows.extend(
+        [
+            "",
+            "The top group contains the most frequent 10% of observed words, rounded up to a whole word. See [frequency concentration](frequency_concentration.csv) and each word-size directory's `frequency_ranks.csv`.",
+            "",
+            "### What explains the visible grouping?",
+            "",
+            "These are the existing average-word-vector coordinates, now coloured by each sequence's proportion of G and C. Sequences with no usable words or no known letters are excluded. A colour gradient along a coordinate shows an association with letter composition.",
+            "",
+            "![Representations and letter composition](figures/sequence_composition.png)",
+            "",
+            "| Word size | G/C agreement with coordinate 1 | G/C agreement with coordinate 2 |",
+            "| --- | --- | --- |",
+        ]
+    )
+    correlations = analysis["composition_correlations"]
+    for k in sorted({result["k"] for result in correlations}):
+        results = {
+            result["coordinate"]: result["gc_rank_correlation"]
+            for result in correlations
+            if result["k"] == k and result["representation"] == "mean_vectors"
+        }
+        rows.append(
+            "| "
+            + str(k)
+            + " | "
+            + _number(results["coordinate_1"])
+            + " | "
+            + _number(results["coordinate_2"])
+            + " |"
+        )
+    rows.extend(
+        [
+            "",
+            "These are rank correlations from -1 to 1. A magnitude near 1 indicates a strong association. Projection directions can flip, so the sign does not carry a biological meaning. Strong agreement suggests composition is a major feature of that coordinate, but does not show that composition explains every difference. All four representations are checked in [composition correlations](composition_correlations.csv). No significance test or disease accuracy is reported.",
+            "",
+            "### Which words differ between the source classes?",
+            "",
+        ]
+    )
+    classes = analysis["class_comparison"]
+    if classes["status"] == "complete":
+        rows.extend(
+            [
+                "The figure compares "
+                + str(classes["k"])
+                + "-letter word rates in "
+                + classes["numerator"]
+                + " versus "
+                + classes["denominator"]
+                + ". Each rate divides by the total usable word occurrences in its class. A ratio of 2 means twice the relative frequency; 0.5 means half. Up to six words in each direction are shown, requiring at least 20 occurrences in each class. Ratios use a 0.5-count adjustment to handle zero counts in the full table.",
+                "",
+                "![Class word differences](figures/class_word_differences.png)",
+                "",
+                "These are descriptive differences in the same sample. They can reflect source species or letter composition and do not identify disease-causing words. Counts include overlapping windows and are not independent observations. See `k_"
+                + str(classes["k"])
+                + "/class_word_comparison.csv` for all words and `class_words_shown.csv` for the plotted selection.",
+                "",
+            ]
+        )
+    else:
+        rows.extend([classes["reason"], ""])
+    order = analysis["word_order"]
+    rows.extend(["### Does letter order affect the observed words?", ""])
+    if order["status"] == "complete":
+        rows.extend(
+            [
+                "We shuffle letters independently inside every uninterrupted known-letter run, repeat this for the full dataset 10 times, and count "
+                + str(order["k"])
+                + "-letter words each time. Sequence lengths, letter counts within each run, unknown-letter gaps and the number of usable windows stay fixed. No new Word2Vec model is trained for this check. The comparison uses size 4 when available, otherwise the closest completed size up to 6.",
+                "",
+            ]
+        )
+        if order["plot_created"]:
+            rows.extend(
+                ["![Letter-order comparison](figures/word_order_effect.png)", ""]
+            )
+        rows.extend(
+            [
+                "Ratios compare the original count with the mean shuffled count, using a 0.5-count adjustment. Up to six words in each direction are shown, requiring at least 20 original and 20 average shuffled occurrences. Values above 1 indicate more occurrences in the original order, and values below 1 indicate fewer. The saved table also includes variation and the observed range across shuffles. Ten shuffles provide an exploratory reference, not a confidence interval or a significance test. The extremes shown are selected from the same data and do not establish a biological function. See `k_"
+                + str(order["k"])
+                + "/shuffled_word_comparison.csv` and `shuffled_words_shown.csv` when a figure is available.",
+                "",
+            ]
+        )
+    else:
+        rows.extend([order["reason"], ""])
+    return rows
 
 
 def _write_report(summary: dict, output_dir: Path):
@@ -224,6 +343,7 @@ def _write_report(summary: dict, output_dir: Path):
                     "**No segment contained neighbouring words. The word vectors retain their initial random values and should not be interpreted as learned context.**",
                 ]
             )
+    rows.extend(_extra_report(summary.get("additional_analysis", {})))
     rows.extend(
         [
             "",
@@ -495,7 +615,36 @@ def analyze_dataset(
     if len(completed):
         completed.to_csv(output_dir / "k_comparison.csv", index=False)
         plot_k_comparison(completed, figures / "k_comparison.png")
+    summary["additional_analysis"] = create_extra_analysis(records, summary, output_dir)
     summary["elapsed_seconds"] = time.perf_counter() - started
+    (output_dir / "summary.json").write_text(
+        json.dumps(summary, indent=2, allow_nan=False) + "\n", encoding="utf-8"
+    )
+    _write_report(summary, output_dir)
+    print("Report: " + str(output_dir / "report.md"), flush=True)
+    return summary
+
+
+def extend_saved_analysis(input_path: Path, output_dir: Path) -> dict:
+    """Extend matching saved results without relearning any word vectors.
+
+    Args:
+        input_path: Original sequence CSV used for the saved analysis.
+        output_dir: Directory containing its summary and representations.
+
+    Returns:
+        Updated summary with the additional descriptive comparisons.
+
+    Raises:
+        ValueError: If the input fingerprint differs from the saved analysis.
+    """
+    summary = json.loads((output_dir / "summary.json").read_text(encoding="utf-8"))
+    if file_digest(input_path) != summary["input_sha256"]:
+        raise ValueError(
+            "The input file does not match the saved analysis. Run analyze first."
+        )
+    records, _ = load_dataset(input_path, summary["alphabet"])
+    summary["additional_analysis"] = create_extra_analysis(records, summary, output_dir)
     (output_dir / "summary.json").write_text(
         json.dumps(summary, indent=2, allow_nan=False) + "\n", encoding="utf-8"
     )

@@ -14,6 +14,9 @@ def build_parser() -> argparse.ArgumentParser:
         "prepare", help="Download and prepare a balanced DeePaC sample."
     )
     analyze = commands.add_parser("analyze", help="Analyse an existing sequence CSV.")
+    explore = commands.add_parser(
+        "explore", help="Extend saved analysis without relearning word vectors."
+    )
     everything = commands.add_parser(
         "all", help="Prepare DeePaC data and run steps 1–3."
     )
@@ -27,9 +30,11 @@ def build_parser() -> argparse.ArgumentParser:
         )
     for command in (prepare, analyze, everything):
         command.add_argument("--seed", type=int, default=42)
-    analyze.add_argument(
-        "--input", type=Path, default=Path("data/processed/sequences.csv")
-    )
+    for command in (analyze, explore):
+        command.add_argument(
+            "--input", type=Path, default=Path("data/processed/sequences.csv")
+        )
+    explore.add_argument("--output-dir", type=Path, default=Path("outputs"))
     analyze.add_argument("--alphabet", choices=("dna", "rna"), default="dna")
     for command in (analyze, everything):
         command.add_argument("--output-dir", type=Path, default=Path("outputs"))
@@ -55,7 +60,7 @@ def main() -> int:
     """
     parser = build_parser()
     args = parser.parse_args()
-    if not 0 <= args.seed <= 2**32 - 1:
+    if not 0 <= getattr(args, "seed", 42) <= 2**32 - 1:
         parser.error("--seed must be between 0 and 4294967295.")
     for name in ("per_class", "vector_size", "window", "epochs"):
         if getattr(args, name, 1) < 1:
@@ -90,6 +95,10 @@ def main() -> int:
                 epochs=args.epochs,
                 seed=args.seed,
             )
+        elif args.command == "explore":
+            from src.analysis import extend_saved_analysis
+
+            extend_saved_analysis(input_path, args.output_dir)
     except ImportError as error:
         print(
             "Missing dependency: "

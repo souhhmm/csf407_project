@@ -16,11 +16,11 @@ python3 -m venv .venv
 
 This prepares the dataset if needed, then compares words of 3, 4, and 6 letters. A checked sample with the same settings is reused. Results go to `outputs/`.
 
-Open **`outputs/report.md`** for the results, explanations, and plots. The eight plots use plain backgrounds, simple colours, and short labels. More detailed results are saved as tables rather than additional plots.
+Open **`outputs/report.md`** for the results, explanations, and plots. The default run produces twelve plots with white backgrounds, a consistent blue, orange and teal palette, and short labels. Bars and histogram areas use line patterns with light fills. Detailed comparisons are also saved as tables.
 
 `requirements.txt` records the main packages and compatibility pins. `requirements-lock.txt` records every installed dependency's version. The chosen versions were checked on this Mac with Python 3.9.6.
 
-After the first setup, rerun with `.venv/bin/python run.py all`. The first run downloads about 202 MB of source data. The local environment, downloaded data, and generated outputs are excluded from Git and can be recreated using these commands.
+After the first setup, rerun with `.venv/bin/python run.py all`. The first run downloads about 202 MB of source data. The local environment and downloaded data are excluded from Git. Results in `outputs/` can be committed and can also be recreated using these commands.
 
 ## Run the stages separately
 
@@ -35,6 +35,14 @@ Run analysis on the prepared data:
 ```bash
 .venv/bin/python run.py analyze
 ```
+
+To add or refresh the deeper comparisons using matching saved results, without relearning word vectors:
+
+```bash
+.venv/bin/python run.py explore
+```
+
+This command checks that the input file matches the original analysis. The regular `analyze` and `all` commands also include these comparisons.
 
 Change word sizes or how long word vectors are learned:
 
@@ -76,6 +84,15 @@ The charts show whether sequences appear to group together after their represent
 
 The project lists nearby words in the learned representation and compares word pairs' observed surroundings with their learned similarity. It includes a shuffled comparison and a second check using neighbours that share no positions in the original sequence.
 
+### Further descriptive analysis
+
+- **Frequency concentration:** how much of the total word count comes from the most frequent words, compared across word sizes.
+- **Class word differences:** relative word rates in the two source classes. The figure uses four-letter words when available and shows up to six words in each direction, with at least 20 occurrences per class. These are descriptive differences, not disease predictors.
+- **Letter composition and learned representations:** the existing sequence coordinates coloured by G and C proportions, with rank correlations for both coordinates in all four representations. Sequences with no usable words are excluded.
+- **Letter order:** original word counts compared with ten shuffled copies of the dataset. Each shuffle rearranges letters within known-letter runs, preserving their letter counts, lengths and unknown gaps. The comparison uses four-letter words when available, otherwise the closest completed size up to six. No new word-vector model is trained for this check.
+
+The class and letter-order charts show selected differences. Their complete tables are saved. Ratios use a 0.5-count adjustment to avoid division by zero. The shuffle range describes variation across these ten runs and is not a confidence interval. These checks remain within steps 1–3.
+
 Word-vector learning uses one CPU worker, a fixed random setting, and a stable word hash. The same input and software versions produce repeatable results on this machine. Different machines or numerical libraries may produce small differences.
 
 ## Data preparation
@@ -110,16 +127,20 @@ For RNA, also pass `--alphabet rna`. Missing values, unexpected letters, repeate
 | --- | --- |
 | `data/processed/sequences.csv` | Prepared sequences and their original source information |
 | `data/processed/manifest.json` | Data source, fingerprints, selection settings, and checks |
-| `outputs/report.md` | Plain-language results with eight minimal figures |
+| `outputs/report.md` | Plain-language results with twelve minimal figures for the default dataset |
 | `outputs/summary.json` | Settings, software versions, context comparisons, and runtime |
 | `outputs/sequence_statistics.csv` | Lengths and letter proportions for each sequence |
 | `outputs/class_statistics.csv` | Sequence summaries by class |
 | `outputs/k_comparison.csv` | Comparison of word sizes |
+| `outputs/frequency_concentration.csv` | Occurrence share contributed by the most frequent 10% of words |
+| `outputs/composition_correlations.csv` | Agreement between G/C proportions and saved sequence coordinates |
 | `outputs/k_3/`, `k_4/`, `k_6/` | Word tables, numeric representations, coordinates, and learned word-vector models |
 
 Within each word-size directory, `row_ids.csv` gives the sequence order, and `vocabulary.json` gives the word order. `counts.npz` and `tfidf.npz` store word-based sequence representations without wasting space on zeros. `word_vectors.npy` stores the learned word vectors; `mean_vectors.npy` and `weighted_vectors.npy` store whole-sequence vectors. `idf.npy` stores the learned distinctive-word weights.
 
 The two `context_pairs_*.csv` files contain the surroundings comparison. `nearest_words.csv` includes learned similarities and the fraction of matching letters. `common_words.csv` and `rare_words.csv` contain the highest and lowest observed counts. All observed words appear in `word_frequencies.csv`.
+
+Each word-size directory also includes `frequency_ranks.csv`. The chosen comparison directory includes `class_word_comparison.csv` and `shuffled_word_comparison.csv` when those comparisons are available. The `*_words_shown.csv` files identify the exact words in the two ratio figures.
 
 ## Reading the results
 

@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 from scipy import sparse
 
-from src.analysis import analyze_dataset
+from src.analysis import analyze_dataset, extend_saved_analysis
 
 
 def test_full_pipeline_saves_aligned_representations_and_minimal_charts(tmp_path):
@@ -38,10 +38,19 @@ def test_full_pipeline_saves_aligned_representations_and_minimal_charts(tmp_path
     assert summary["word_sizes"][1]["status"] == "skipped"
     assert json.loads((output / "summary.json").read_text())["sequence_count"] == 5
     charts = list(output.rglob("*.png"))
-    assert len(charts) == 4
+    assert (output / "figures" / "frequency_concentration.png") in charts
+    assert (output / "figures" / "sequence_composition.png") in charts
     assert all(path.read_bytes().startswith(b"\x89PNG\r\n\x1a\n") for path in charts)
     assert not (directory / "word_space.png").exists()
     assert (output / "report.md").exists()
+    assert summary["additional_analysis"]["status"] == "complete"
+    model_before = (directory / "word2vec.model").read_bytes()
+    shuffled_before = pd.read_csv(directory / "shuffled_word_comparison.csv")
+    extend_saved_analysis(source, output)
+    assert (directory / "word2vec.model").read_bytes() == model_before
+    pd.testing.assert_frame_equal(
+        shuffled_before, pd.read_csv(directory / "shuffled_word_comparison.csv")
+    )
 
 
 def test_cli_reports_invalid_input_without_a_traceback(tmp_path):
