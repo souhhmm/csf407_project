@@ -163,3 +163,117 @@ To format the Python code with Black:
 ```bash
 .venv/bin/python -m black --workers 1 run.py src tests
 ```
+
+---
+
+# Task 4: classification models
+
+Steps 1–3 above stay unchanged. Task 4 trains classifiers to separate pathogenic from nonpathogenic source organisms. This section covers the **simple models stage**; neural models and transformers will be added to the same commands later.
+
+## Data and evaluation design
+
+Task 4 does not reuse the 10,000-read validation sample from steps 1–3. It samples the official DeePaC files, which the authors split **by genome**: the training, validation, and test genomes never overlap.
+
+| Split | Source file | Used for |
+| --- | --- | --- |
+| `train` | `*_train.fasta.gz` | Learning word weights, Word2Vec, and classifiers |
+| `val` | `*_val.fasta.gz` | Choosing hyperparameters; ranking models |
+| `test_1`, `test_2` | `*_test_1.fasta.gz`, `*_test_2.fasta.gz` | Final scores for the setting validation chose |
+
+- Reads are sampled at random from the whole of each file (the files are ordered genome by genome), balanced by class, and de-duplicated. Each read keeps its genome accession in the `genome` column.
+- `prepare-splits` stops with an error if any two of train, val, and test share a genome. Exact repeated reads across splits are counted in `data/processed/task4/manifest.json`.
+- `test_1` and `test_2` are the two mate reads of the same fragments (identical read ids, row for row), so treat them as two views of one test, not independent replicates.
+- Classes are unbalanced in genomes: the smoke sample had 45 nonpathogenic and 305 pathogenic training genomes, and only 6 and 39 in validation and test. Results rest on few nonpathogenic genomes, so read the genome-level intervals.
+- Word weights (TF-IDF) and Word2Vec vectors are learned from `train` only; other splits are transformed with what training learned. Test results are produced only for the validation-chosen setting of each model.
+
+## Run it
+
+This stage needs no GPU and no new dependencies. On the machine you run on (for example over SSH):
+
+```bash
+git clone <repository-url> csf407_project
+cd csf407_project
+python3 -m venv .venv                      # Python 3.9–3.12
+.venv/bin/python -m pip install -r requirements-lock.txt
+.venv/bin/python -m pytest                 # optional check
+.venv/bin/python run.py task4
+```
+
+`run.py task4` downloads the source files (about 2 GB, verified by MD5 and kept in `data/raw/`), samples the splits, learns the representations, runs every baseline and model, and writes the results. Disk use is about 2 GB for the downloads, plus a few GB of cached representations at the default sizes. Run it inside `tmux` or `nohup` so a dropped connection does not stop it:
+
+```bash
+nohup .venv/bin/python run.py task4 > task4.log 2>&1 &
+```
+
+Run the stages separately:
+
+```bash
+.venv/bin/python run.py prepare-splits     # download and sample; reuses a matching existing sample
+.venv/bin/python run.py simple-models      # features, models, tables, figures, report
+```
+
+### Quick check first
+
+A small run on the real data finishes quickly once the files are downloaded (the download dominates). The smoke test below used 4,000 training reads and took about 80 seconds for the models on an 8-core laptop:
+
+```bash
+.venv/bin/python run.py prepare-splits --splits-dir data/processed/task4_smoke \
+    --train-per-class 2000 --val-per-class 1000 --test-per-class 1000
+.venv/bin/python run.py simple-models --splits-dir data/processed/task4_smoke \
+    --output-dir results/task4/smoke --feature-dir data/features/task4_smoke \
+    --seeds 42 43 --trees 100 --epochs 5
+```
+
+### Options
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `--train-per-class`, `--val-per-class`, `--test-per-class` | 50000, 10000, 10000 | Reads per class in each split (`prepare-splits`, `task4`). The test size applies to each of `test_1` and `test_2`. |
+| `--splits-dir` | `data/processed/task4` | Where the split CSVs and manifest are saved. |
+| `--force` | off | Replace existing splits that were made with different settings. |
+| `--k` | `3 4 6` | Word sizes. |
+| `--models` | all five | Any of `logistic_regression decision_tree random_forest naive_bayes gradient_boosting`. |
+| `--seeds` | `42 43 44` | The first seed drives tuning and Word2Vec; later seeds repeat only the models that depend on a seed (trees, forests, boosting). |
+| `--n-jobs` | all cores | CPU workers for forests and boosting. |
+| `--workers` | 1 | Word2Vec workers. Values above 1 are faster but results are no longer exactly repeatable. |
+| `--trees` | 200 | Trees per random forest. |
+| `--bootstrap` | 100 | Genome-level resamples per interval; 0 disables intervals. |
+| `--epochs`, `--vector-size`, `--window` | 10, 64, 5 | Word2Vec settings, as in steps 1–3. |
+| `--output-dir` | `results/task4/simple_models` | Use a different directory to keep several runs. |
+| `--feature-dir` | `data/features/task4` | Cache of learned representations; reused when the splits and settings match. |
+
+The full-size run has not been timed. Word2Vec on 100,000 training reads and random forests on 4,096-column tables are the slow parts; use the quick check above to measure your machine, and reduce `--train-per-class` or `--seeds` if needed. A rerun with the same settings skips Word2Vec by reusing the cache.
+
+## What is compared
+
+- **Representations:** word counts, TF-IDF, average Word2Vec vectors, and TF-IDF-weighted average Word2Vec vectors, each at the chosen word sizes.
+- **Models:** logistic regression, decision tree, random forest, multinomial naive Bayes (counts and TF-IDF only, since vectors can be negative), and histogram gradient boosting (only for tables of at most 1,024 columns, so not for 4,096-column six-letter counts).
+- **Baselines:** majority class; G and C fraction only; letter composition with one-letter and two-letter words; number of unknown letters. These show how much of any result is available without word-level information. Read length is constant (250), so it cannot be a shortcut.
+- **Shuffled-label control:** logistic regression trained on randomly reassigned training labels, repeated five times. Its average should sit near 0.5 AUC. A single shuffle can land away from 0.5 when one strong direction separates the classes, so read the average and spread; a consistently high value would indicate a leak.
+
+AUC is the main metric. Accuracy, F1, and balanced accuracy use a 0.5 cutoff chosen without regard to differences between species.
+
+## Where the results are
+
+| File in `results/task4/simple_models/` | Contents |
+| --- | --- |
+| `report.md` | Data summary, baselines and control, models ranked by validation AUC, figures, reading notes |
+| `results_summary.csv` | One row per configuration, averaged over seeds, with genome-level intervals |
+| `results.csv` | One row per configuration and seed, including train, validation, and test metrics |
+| `tuning.csv` | Every hyperparameter setting tried, **validation scores only** |
+| `summary.json` | Settings, software versions, split manifest, runtime |
+| `figures/model_heatmap.png` | AUC for every model, representation, and word size on validation, test 1, and test 2 |
+| `figures/baseline_comparison.png` | Best model per representation (chosen on validation) against baselines and the control |
+| `figures/generalisation.png` | Validation AUC against test AUC for every configuration |
+
+Rank models using validation AUC; picking the best row by test AUC would tune on the test set. Intervals resample whole genomes within each class because reads from one genome are not independent; they remain rough with so few genomes.
+
+Nothing in `data/` is committed (`data/raw/`, `data/processed/`, and `data/features/` are excluded). Decide separately whether to commit `results/`.
+
+## Check the code
+
+```bash
+.venv/bin/python -m pytest
+```
+
+New checks cover split sampling and genome separation, agreement of the fast word counter with the steps 1–3 word maker, training-only learning of representations, metric calculations, every model, and a full synthetic run that writes all tables and figures.
