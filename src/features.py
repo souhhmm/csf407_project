@@ -283,3 +283,53 @@ def load_representations(
         }
     except (OSError, ValueError):
         return None
+
+
+def load_or_build_representations(
+    sequences_by_split: Dict[str, List[str]],
+    k: int,
+    feature_dir: Path,
+    split_digests: dict,
+    vector_size: int = 64,
+    window: int = 5,
+    epochs: int = 10,
+    seed: int = 42,
+    workers: int = 1,
+) -> dict:
+    """Reuse saved representations for these settings, or learn and save them.
+
+    Args:
+        sequences_by_split: Sequences for each split name, including train.
+        k: Number of letters in each word.
+        feature_dir: Parent directory of the per-word-size caches.
+        split_digests: Fingerprints of the split files, so a changed sample
+            never reuses an old cache.
+        vector_size: Number of values in a word vector.
+        window: Maximum number of neighbouring words on either side.
+        epochs: Word2Vec passes over the training reads.
+        seed: Fixed random setting.
+        workers: Word2Vec CPU workers.
+
+    Returns:
+        The result of build_representations.
+    """
+    settings = {
+        "k": k,
+        "vector_size": vector_size,
+        "window": window,
+        "epochs": epochs,
+        "seed": seed,
+        "splits": split_digests,
+    }
+    directory = feature_dir / ("k_" + str(k))
+    representations = load_representations(
+        directory, settings, k, list(sequences_by_split)
+    )
+    if representations is None:
+        representations = build_representations(
+            sequences_by_split, k, vector_size, window, epochs, seed, workers
+        )
+        save_representations(representations, directory, settings)
+    else:
+        print("  using saved representations: " + str(directory), flush=True)
+    return representations

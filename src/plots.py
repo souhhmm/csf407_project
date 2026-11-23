@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Optional
 
 import matplotlib
 
@@ -163,31 +164,30 @@ def plot_k_comparison(summary: pd.DataFrame, path: Path):
         path: Destination PNG.
     """
     figure, axis = plt.subplots(figsize=(6, 3.8), layout="constrained")
-    axis.plot(
-        summary["k"],
-        summary["mean_sequence_coverage"] * 100,
-        "o-",
-        color=COLORS[0],
-        linewidth=2,
-        markersize=5,
-    )
-    axis.fill_between(
-        summary["k"],
-        summary["mean_sequence_coverage"] * 100,
-        0,
-        facecolor=matplotlib.colors.to_rgba(COLORS[0], 0.03),
-        edgecolor=matplotlib.colors.to_rgba(COLORS[0], 0.3),
+    coverage = summary["mean_sequence_coverage"] * 100
+    positions = np.arange(len(summary))
+    axis.bar(
+        positions,
+        coverage,
+        width=0.6,
+        facecolor=matplotlib.colors.to_rgba(COLORS[0], 0.08),
+        edgecolor=COLORS[0],
         hatch=HATCHES[0],
-        linewidth=0,
+        linewidth=1.2,
     )
+    for position, value in zip(positions, coverage):
+        axis.text(
+            position, value + 2, format(value, ".1f") + "%", ha="center", fontsize=10
+        )
     axis.set(
         title="Vocabulary within a sequence",
         xlabel="Letters per word",
         ylabel="Average percentage of possible words",
-        xticks=summary["k"],
-        ylim=(0, 100),
+        xticks=positions,
+        xticklabels=[str(k) for k in summary["k"]],
+        ylim=(0, 105),
     )
-    _finish(figure, [axis], path)
+    _finish(figure, [axis], path, categorical=True)
 
 
 def plot_frequency_concentration(tables: dict, path: Path):
@@ -219,6 +219,55 @@ def plot_frequency_concentration(tables: dict, path: Path):
     )
     axis.legend(frameon=False, fontsize=8)
     _finish(figure, [axis], path)
+
+
+def plot_word_frequency_bars(table: pd.DataFrame, k: int, path: Path):
+    """Show every word's share of all occurrences, most frequent word first.
+
+    Args:
+        table: Ranked frequencies for one word size, with word and fraction columns.
+        k: Number of letters in each word.
+        path: Destination PNG.
+    """
+    ranked = table.sort_values("fraction", ascending=False)
+    shares = ranked["fraction"].to_numpy() * 100
+    words = ranked["word"].tolist()
+    figure, axis = plt.subplots(figsize=(6, 4), layout="constrained")
+    axis.bar(
+        np.arange(len(shares)),
+        shares,
+        width=0.85,
+        facecolor=matplotlib.colors.to_rgba(COLORS[0], 0.12),
+        edgecolor=COLORS[0],
+        linewidth=0.6,
+    )
+    axis.axhline(100 / len(shares), linestyle="--", color="0.5", linewidth=1)
+    axis.text(
+        len(shares) - 1,
+        100 / len(shares),
+        "equal share",
+        ha="right",
+        va="bottom",
+        fontsize=9,
+        color="0.35",
+    )
+    axis.text(
+        0.97,
+        0.95,
+        "Most common: " + ", ".join(words[:3]),
+        transform=axis.transAxes,
+        ha="right",
+        va="top",
+        fontsize=9,
+    )
+    axis.set(
+        title="Word frequencies, k = " + str(k),
+        xlabel="Words, most frequent first (all " + str(len(shares)) + ")",
+        ylabel="Percentage of word occurrences",
+        xticks=[],
+        xlim=(-1, len(shares)),
+    )
+    _finish(figure, [axis], path, categorical=True)
 
 
 def plot_composition_spaces(points_by_k: dict, path: Path):
@@ -508,3 +557,190 @@ def plot_generalisation(summary: pd.DataFrame, path: Path):
     axes[0].set_ylabel("Test AUC")
     axes[0].legend(frameon=False, fontsize=8)
     _finish(figure, axes, path, categorical=True)
+
+
+NEURAL_LABELS = {
+    "mlp": "MLP on weighted counts",
+    "cnn": "CNN on one-hot reads",
+    "gru": "BiGRU on words",
+    "transformer": "Transformer on words",
+}
+
+
+def _best_per_model(models: pd.DataFrame) -> pd.DataFrame:
+    """Keep the row with the highest validation AUC for each model name."""
+    ordered = models.sort_values("val_auc_mean", ascending=False)
+    return ordered.drop_duplicates("model").reset_index(drop=True)
+
+
+def plot_neural_comparison(
+    summary: pd.DataFrame, simple: Optional[pd.DataFrame], path: Path
+):
+    """Plot the best setting of each neural model next to the best simple models.
+
+    Settings are chosen by validation AUC. Bars show test AUC; whiskers show the
+    genome-level interval of the first test set.
+
+    Args:
+        summary: Seed-averaged neural results.
+        simple: Seed-averaged simple-model results, or None.
+        path: Destination PNG.
+    """
+    rows = []
+    for _, row in _best_per_model(summary[summary["group"] == "model"]).iterrows():
+        rows.append((NEURAL_LABELS.get(row["model"], row["model"]), row, COLORS[0]))
+    if simple is not None:
+        simple_models = simple[simple["group"] == "model"]
+        for _, row in _best_per_model(simple_models).head(2).iterrows():
+            label = MODEL_LABELS.get(row["model"], row["model"]) + " (simple)"
+            rows.append((label, row, COLORS[1]))
+    figure, axes = plt.subplots(
+        1, 2, figsize=(10, 0.55 * len(rows) + 1.6), sharey=True, layout="constrained"
+    )
+    positions = np.arange(len(rows))[::-1]
+    for axis, split in zip(axes, ["test_1", "test_2"]):
+        for position, (label, row, color) in zip(positions, rows):
+            axis.barh(position, row[split + "_auc_mean"], color=color, height=0.6)
+            if not np.isnan(row[split + "_auc_low"]):
+                axis.plot(
+                    [row[split + "_auc_low"], row[split + "_auc_high"]],
+                    [position, position],
+                    color="0.2",
+                    linewidth=1.2,
+                )
+            axis.text(
+                0.452,
+                position,
+                format(row[split + "_auc_mean"], ".3f"),
+                va="center",
+                fontsize=8,
+                color="white",
+            )
+        axis.axvline(0.5, linestyle="--", color="0.6", linewidth=1)
+        axis.set(title=SPLIT_LABELS[split] + " AUC", xlim=(0.45, 1))
+    axes[0].set_yticks(positions, [label for label, _, _ in rows])
+    _finish(figure, axes, path, categorical=True)
+
+
+def plot_training_curves(history: pd.DataFrame, path: Path):
+    """Plot validation AUC after each epoch for every network trained with the first seed.
+
+    Args:
+        history: Per-epoch rows with model, params, seed, epoch, and val_auc.
+        path: Destination PNG.
+    """
+    models = [name for name in NEURAL_LABELS if name in set(history["model"])]
+    figure, axes = plt.subplots(
+        1,
+        max(len(models), 1),
+        figsize=(3.2 * max(len(models), 1), 3.4),
+        sharey=True,
+        squeeze=False,
+        layout="constrained",
+    )
+    first = history[
+        (history["group"] == "model") & (history["seed"] == history["seed"].min())
+    ]
+    for axis, model in zip(axes[0], models):
+        part = first[first["model"] == model]
+        for number, ((k, params), curve) in enumerate(
+            part.groupby(["k", "params"], dropna=False)
+        ):
+            label = params + ("" if pd.isna(k) else ", k=" + str(k))
+            axis.plot(
+                curve["epoch"],
+                curve["val_auc"],
+                marker="o",
+                markersize=3,
+                color=COLORS[number % len(COLORS)],
+                linewidth=1.3,
+                label=label,
+            )
+        axis.set(title=NEURAL_LABELS[model], xlabel="Epoch")
+        axis.legend(frameon=False, fontsize=6)
+    axes[0][0].set_ylabel("Validation AUC")
+    _finish(figure, axes, path, categorical=True)
+
+
+BASELINE_ROWS = {
+    "composition_k2": "Letter pairs only (baseline)",
+    "gc_fraction": "G/C fraction only (baseline)",
+}
+
+
+def plot_model_ranking(summary: pd.DataFrame, path: Path):
+    """Rank each model's best setting and the baselines on one panel.
+
+    Settings are chosen by validation AUC. Hollow dots mark validation AUC, filled
+    dots mark test 1 AUC with its genome-level interval.
+
+    Args:
+        summary: Seed-averaged results with group, model, representation, and k.
+        path: Destination PNG.
+    """
+    rows = []
+    models = summary[summary["group"] == "model"]
+    for _, row in (
+        models.sort_values("val_auc_mean", ascending=False)
+        .drop_duplicates("model")
+        .iterrows()
+    ):
+        label = (
+            MODEL_LABELS[row["model"]]
+            + " ("
+            + REPRESENTATION_LABELS[row["representation"]].replace("\n", " ").lower()
+            + ", k="
+            + str(int(row["k"]))
+            + ")"
+        )
+        rows.append((label, row, COLORS[0]))
+    baselines = summary[summary["group"] == "baseline"]
+    for name, label in BASELINE_ROWS.items():
+        rows.append(
+            (label, baselines[baselines["representation"] == name].iloc[0], "0.45")
+        )
+    control = summary[summary["group"] == "control"]
+    rows.append(
+        (
+            "Shuffled labels (control)",
+            control[["val_auc_mean", "test_1_auc_mean"]]
+            .mean()
+            .to_frame()
+            .T.assign(test_1_auc_low=np.nan, test_1_auc_high=np.nan)
+            .iloc[0],
+            "0.45",
+        )
+    )
+    rows.sort(key=lambda item: item[1]["val_auc_mean"], reverse=True)
+    figure, axis = plt.subplots(
+        figsize=(9, 0.5 * len(rows) + 1.2), layout="constrained"
+    )
+    positions = np.arange(len(rows))[::-1]
+    for position, (label, row, color) in zip(positions, rows):
+        if not np.isnan(row["test_1_auc_low"]):
+            axis.plot(
+                [row["test_1_auc_low"], row["test_1_auc_high"]],
+                [position, position],
+                color=color,
+                linewidth=2,
+                alpha=0.55,
+            )
+        axis.scatter(
+            row["test_1_auc_mean"], position, s=80, color=color, zorder=3, linewidths=0
+        )
+        axis.scatter(
+            row["val_auc_mean"],
+            position,
+            s=70,
+            facecolor="white",
+            edgecolor=color,
+            linewidth=1.8,
+            zorder=3,
+        )
+    axis.axvline(0.5, linestyle="--", color="0.6", linewidth=1)
+    axis.set_yticks(positions, [label for label, _, _ in rows])
+    axis.set(xlabel="AUC (0.5 = chance, 1.0 = perfect)", xlim=(0.4, 1.0))
+    axis.scatter([], [], s=70, facecolor="white", edgecolor="0.3", label="Validation")
+    axis.scatter([], [], s=80, color="0.3", label="Test 1, with 95% interval")
+    axis.legend(frameon=False, fontsize=9, loc="lower right")
+    _finish(figure, [axis], path, categorical=True)

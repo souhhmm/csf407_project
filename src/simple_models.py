@@ -24,10 +24,8 @@ from src.classifiers import (
 )
 from src.features import (
     REPRESENTATIONS,
-    build_representations,
     count_words,
-    load_representations,
-    save_representations,
+    load_or_build_representations,
 )
 from src.plots import (
     plot_baseline_comparison,
@@ -442,23 +440,17 @@ def run_simple_models(
     record(*_run_configuration("majority", "none", None, "baseline", majority, context))
     for k in ks:
         print("Word size " + str(k), flush=True)
-        settings = {
-            "k": k,
-            "vector_size": vector_size,
-            "window": window,
-            "epochs": epochs,
-            "seed": seeds[0],
-            "splits": manifest["csv_sha256"],
-        }
-        directory = feature_dir / ("k_" + str(k))
-        representations = load_representations(directory, settings, k, names)
-        if representations is None:
-            representations = build_representations(
-                sequences, k, vector_size, window, epochs, seeds[0], workers
-            )
-            save_representations(representations, directory, settings)
-        else:
-            print("  using saved representations: " + str(directory), flush=True)
+        representations = load_or_build_representations(
+            sequences,
+            k,
+            feature_dir,
+            manifest["csv_sha256"],
+            vector_size,
+            window,
+            epochs,
+            seeds[0],
+            workers,
+        )
         for representation in REPRESENTATIONS:
             tables = {
                 name: representations["splits"][name][representation] for name in names

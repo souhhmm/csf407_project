@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 
 
-# Listed here, not imported, so numpy is not loaded before main sets thread limits.
+# Listed here, not imported, so numpy and torch are not loaded before main sets thread limits.
 MODELS = (
     "logistic_regression",
     "decision_tree",
@@ -12,6 +12,7 @@ MODELS = (
     "naive_bayes",
     "gradient_boosting",
 )
+NEURAL_MODELS = ("mlp", "cnn", "gru", "transformer")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -67,6 +68,10 @@ def build_parser() -> argparse.ArgumentParser:
         "simple-models",
         help="Run baselines and simple models on prepared splits (task 4).",
     )
+    neural = commands.add_parser(
+        "neural-models",
+        help="Train small neural networks on prepared splits (task 4; needs torch).",
+    )
     task4 = commands.add_parser(
         "task4", help="Prepare the splits, then run the simple models (task 4)."
     )
@@ -81,7 +86,7 @@ def build_parser() -> argparse.ArgumentParser:
             action="store_true",
             help="Replace the existing processed splits.",
         )
-    for command in (splits, simple, task4):
+    for command in (splits, simple, neural, task4):
         command.add_argument(
             "--splits-dir", type=Path, default=Path("data/processed/task4")
         )
@@ -139,6 +144,70 @@ def build_parser() -> argparse.ArgumentParser:
             default=100,
             help="Genome-level bootstrap resamples per interval; 0 disables.",
         )
+    neural.add_argument(
+        "--output-dir", type=Path, default=Path("results/task4/neural_models")
+    )
+    neural.add_argument(
+        "--feature-dir",
+        type=Path,
+        default=Path("data/features/task4"),
+        help="Where learned representations are cached (shared with simple-models).",
+    )
+    neural.add_argument(
+        "--simple-results",
+        type=Path,
+        default=Path("results/task4/simple_models/results_summary.csv"),
+        help="Simple-model summary to compare against, if it exists.",
+    )
+    neural.add_argument(
+        "--k", type=int, nargs="+", default=[3, 6], help="Word sizes to compare."
+    )
+    neural.add_argument(
+        "--models",
+        nargs="+",
+        choices=NEURAL_MODELS,
+        default=list(NEURAL_MODELS),
+        help="Networks to train.",
+    )
+    neural.add_argument("--vector-size", type=int, default=64)
+    neural.add_argument("--window", type=int, default=5)
+    neural.add_argument(
+        "--epochs",
+        type=int,
+        default=10,
+        help="Word2Vec passes over the training reads.",
+    )
+    neural.add_argument(
+        "--seeds",
+        type=int,
+        nargs="+",
+        default=[42, 43, 44],
+        help="Random settings; the first drives tuning and Word2Vec.",
+    )
+    neural.add_argument("--workers", type=int, default=1)
+    neural.add_argument(
+        "--n-jobs",
+        type=int,
+        default=0,
+        help="CPU threads for torch; 0 uses every core.",
+    )
+    neural.add_argument("--bootstrap", type=int, default=100)
+    neural.add_argument(
+        "--max-epochs",
+        type=int,
+        default=15,
+        help="Upper limit on passes over the training reads.",
+    )
+    neural.add_argument(
+        "--patience",
+        type=int,
+        default=3,
+        help="Epochs without validation improvement before stopping.",
+    )
+    neural.add_argument("--batch-size", type=int, default=256)
+    neural.add_argument(
+        "--device", choices=("auto", "cuda", "mps", "cpu"), default="auto"
+    )
     return parser
 
 
@@ -162,6 +231,9 @@ def main() -> int:
         "epochs",
         "workers",
         "trees",
+        "max_epochs",
+        "patience",
+        "batch_size",
     ):
         if getattr(args, name, 1) < 1:
             parser.error("--" + name.replace("_", "-") + " must be at least 1.")
@@ -215,6 +287,28 @@ def main() -> int:
                 trees=args.trees,
                 bootstrap=args.bootstrap,
             )
+        if args.command == "neural-models":
+            from src.neural_models import run_neural_models
+
+            run_neural_models(
+                splits_dir=args.splits_dir,
+                output_dir=args.output_dir,
+                feature_dir=args.feature_dir,
+                simple_summary=args.simple_results,
+                ks=tuple(args.k),
+                models=tuple(args.models),
+                vector_size=args.vector_size,
+                window=args.window,
+                epochs=args.epochs,
+                seeds=tuple(args.seeds),
+                workers=args.workers,
+                n_jobs=args.n_jobs,
+                bootstrap=args.bootstrap,
+                max_epochs=args.max_epochs,
+                patience=args.patience,
+                batch_size=args.batch_size,
+                device=args.device,
+            )
         if args.command in ("prepare", "all"):
             from src.data import prepare_dataset
 
@@ -244,7 +338,12 @@ def main() -> int:
         print(
             "Missing dependency: "
             + str(error)
-            + ". Run .venv/bin/python -m pip install -r requirements.txt",
+            + ". Run .venv/bin/python -m pip install -r "
+            + (
+                "requirements-neural.txt"
+                if "torch" in str(error)
+                else "requirements.txt"
+            ),
             file=sys.stderr,
         )
         return 1

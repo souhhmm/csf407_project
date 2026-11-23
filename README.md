@@ -277,3 +277,42 @@ Nothing in `data/` is committed (`data/raw/`, `data/processed/`, and `data/featu
 ```
 
 New checks cover split sampling and genome separation, agreement of the fast word counter with the steps 1–3 word maker, training-only learning of representations, metric calculations, every model, and a full synthetic run that writes all tables and figures.
+
+# Task 4, part 2: neural models
+
+Small neural networks trained on the same species-disjoint DeePaC splits and scored with the same metrics, genome-level intervals and row format as the simple models, so the two summaries can be compared directly. Torch is an optional extra: nothing above needs it.
+
+| Model | Input | Notes |
+| --- | --- | --- |
+| `mlp` | weighted word counts (k = 3, 6) | two hidden layers |
+| `cnn` | one-hot reads | DeePaC-style convolutions with a global max, no word size |
+| `gru` | overlapping words (k = 3, 6) | bidirectional GRU, embeddings start from the train-only Word2Vec vectors |
+| `transformer` | overlapping words (k = 3, 6) | 2 or 4 pre-norm layers, width 128, trained from scratch |
+
+All are small (roughly 0.15–2 million values). The CNN, GRU and transformer see both strands: strands are flipped at random during training and the scores of a read and its reverse complement are averaged when predicting. One setting per model is compared on validation AUC, early stopping and the choice of epoch use validation reads only, the winner is retrained with the other seeds, and the test sets are scored once. A CNN trained on shuffled training labels is the leak control. Pretrained DNA models are not included yet.
+
+## Run it on the GPU machine
+
+Run the simple models first (see above), because the neural report compares against `results/task4/simple_models/results_summary.csv` when it exists and the two share the learned word vectors in `data/features/`.
+
+```bash
+source .venv/bin/activate
+pip install -r requirements.txt
+# RTX PRO 6000 Blackwell needs a CUDA 12.8 build of torch 2.7 or newer:
+pip install torch --index-url https://download.pytorch.org/whl/cu128
+python -c "import torch; print(torch.cuda.get_device_capability(), (torch.ones(8, 8, device='cuda') @ torch.ones(8, 8, device='cuda')).sum().item())"   # expect (12, 0) 512.0
+nohup python run.py task4 > task4.log 2>&1 &            # skip if already done
+nohup python run.py neural-models > neural.log 2>&1 &
+```
+
+Quick check on any machine (about 10 minutes on a laptop; uses the small sample from the quick check above):
+
+```bash
+python run.py neural-models --splits-dir data/processed/task4_smoke --output-dir .cache/neural_check --max-epochs 3 --seeds 42 43 --bootstrap 20
+```
+
+Options: `--models` (any of mlp cnn gru transformer, to run one tier at a time), `--k`, `--seeds`, `--max-epochs` (15), `--patience` (3), `--batch-size` (256), `--device` (auto picks CUDA, then Apple MPS, then CPU), `--n-jobs`, `--simple-results`. The full run has not been timed.
+
+Outputs go to `results/task4/neural_models/`: `report.md`, `results_summary.csv`, `results.csv`, `tuning.csv`, `history.csv` (every epoch), `summary.json` and `figures/` (`neural_comparison.png`, `training_curves.png`). GPU training is not bit-for-bit repeatable; seeds give spread, not exact reruns.
+
+Tests that need torch are skipped when it is not installed: `python -m pytest -q`.

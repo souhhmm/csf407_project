@@ -1,0 +1,6 @@
+# Extra packages for the neural models of task 4 (run.py neural-models).
+# On a CUDA machine install torch first from the matching index, for example
+# for an RTX PRO 6000 Blackwell (needs a CUDA 12.8 build, torch 2.7 or newer):
+#   pip install torch --index-url https://download.pytorch.org/whl/cu128
+-r requirements.txt
+torch>=2.7

@@ -145,7 +145,11 @@ def test_cli_reports_missing_splits_without_a_traceback(tmp_path):
 
 def test_cli_does_not_load_numpy_before_thread_limits_are_set():
     result = subprocess.run(
-        [sys.executable, "-c", "import run, sys; print('numpy' in sys.modules)"],
+        [
+            sys.executable,
+            "-c",
+            "import run, sys; print('numpy' in sys.modules or 'torch' in sys.modules)",
+        ],
         capture_output=True,
         text=True,
     )
