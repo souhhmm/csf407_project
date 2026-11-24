@@ -19,6 +19,8 @@ NEURAL_DIRS = [
     "full_transformer",
     "full_dnabert2",
     "full_dnabert2_scratch",
+    "full_dnabert2_2ep",
+    "full_dnabert2_scratch_warmup_only",
 ]
 CONDITIONS = [
     ("test_pooled", "250 bp test"),
@@ -27,7 +29,7 @@ CONDITIONS = [
     ("test_1_letters_shuffled", "letters shuffled"),
     ("bacpacs_test_1", "BacPaCS"),
 ]
-LABELS = {**NEURAL_LABELS, "gru_long": "BiGRU, longer training", "simple": "Best simple model"}
+LABELS = {**NEURAL_LABELS, "dnabert2_2ep": "DNABERT-2, 2-epoch cap (first run)", "dnabert2_scratch_warmup_only": "DNABERT-2 random init, warmup only", "gru_long": "BiGRU, longer training", "simple": "Best simple model"}
 
 
 def _selected_tag(summary: pd.DataFrame) -> str:

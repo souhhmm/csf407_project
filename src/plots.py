@@ -567,7 +567,7 @@ NEURAL_LABELS = {
     "dnabert2": "DNABERT-2 (pretrained)",
     "dnabert2_scratch": "DNABERT-2 architecture (random init)",
 }
-PARAM_NAMES = {"hidden": "hidden", "filters": "filters", "layers": "layers", "pooling": ""}
+PARAM_NAMES = {"lr": "lr", "hidden": "hidden", "filters": "filters", "layers": "layers", "pooling": ""}
 
 
 def _setting_label(params: str, k) -> str:

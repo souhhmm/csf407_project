@@ -119,13 +119,14 @@ def _train(
         labels,
         setup["inputs"]["val"],
         context["labels"]["val"],
-        FIXED[model]["lr"],
+        params.get("lr", FIXED[model]["lr"]),
         seed,
         context["device"],
         context["max_epochs"],
         context["patience"],
         context["batch_size"],
         FIXED[model].get("warmup", 0),
+        bool(FIXED[model].get("decay", False)),
     )
     return network, history, time.perf_counter() - started
 

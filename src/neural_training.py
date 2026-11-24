@@ -157,6 +157,7 @@ def train_network(
     patience: int = 3,
     batch_size: int = 256,
     warmup_steps: int = 0,
+    lr_decay: bool = False,
 ) -> Tuple[nn.Module, List[Dict[str, float]]]:
     """Train a network, stopping when validation AUC stops improving.
 
@@ -177,6 +178,7 @@ def train_network(
         batch_size: Reads per update.
         warmup_steps: Updates over which the learning rate rises linearly from
             zero; 0 keeps it constant (the default for all earlier models).
+        lr_decay: Fall linearly to zero over max_epochs after the warmup.
 
     Returns:
         The network with its best weights, and one history row per epoch
@@ -186,9 +188,15 @@ def train_network(
     rng = np.random.default_rng(seed)
     generator = torch.Generator(device="cpu").manual_seed(seed)
     optimizer = torch.optim.AdamW(network.parameters(), lr=lr, weight_decay=0.01)
-    schedule = torch.optim.lr_scheduler.LambdaLR(
-        optimizer, lambda step: min(1.0, (step + 1) / warmup_steps) if warmup_steps else 1.0
-    )
+    total_steps = max_epochs * ((len(train_inputs) + batch_size - 1) // batch_size)
+
+    def rate(step: int) -> float:
+        factor = min(1.0, (step + 1) / warmup_steps) if warmup_steps else 1.0
+        if lr_decay:
+            factor *= max(0.0, 1.0 - step / total_steps)
+        return factor
+
+    schedule = torch.optim.lr_scheduler.LambdaLR(optimizer, rate)
     targets = torch.from_numpy(train_labels.astype(np.float32)).to(device)
     best_auc, best_state, waiting = -np.inf, None, 0
     history = []
