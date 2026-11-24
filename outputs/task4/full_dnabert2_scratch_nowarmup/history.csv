@@ -1,0 +1,3 @@
+group,model,representation,k,params,seed,epoch,train_loss,val_auc,best_so_far,seconds
+model,dnabert2_scratch,bpe_tokens_random_init,,"{""pooling"": 0}",42,1,0.6950099740219117,0.5005035728,True,768.6087721670046
+model,dnabert2_scratch,bpe_tokens_random_init,,"{""pooling"": 0}",42,2,0.693557186782837,0.5001992246,False,765.6831847149879

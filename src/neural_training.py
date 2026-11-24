@@ -156,6 +156,7 @@ def train_network(
     max_epochs: int = 15,
     patience: int = 3,
     batch_size: int = 256,
+    warmup_steps: int = 0,
 ) -> Tuple[nn.Module, List[Dict[str, float]]]:
     """Train a network, stopping when validation AUC stops improving.
 
@@ -174,6 +175,8 @@ def train_network(
         max_epochs: Upper limit on passes over the training reads.
         patience: Epochs without improvement before stopping.
         batch_size: Reads per update.
+        warmup_steps: Updates over which the learning rate rises linearly from
+            zero; 0 keeps it constant (the default for all earlier models).
 
     Returns:
         The network with its best weights, and one history row per epoch
@@ -183,6 +186,9 @@ def train_network(
     rng = np.random.default_rng(seed)
     generator = torch.Generator(device="cpu").manual_seed(seed)
     optimizer = torch.optim.AdamW(network.parameters(), lr=lr, weight_decay=0.01)
+    schedule = torch.optim.lr_scheduler.LambdaLR(
+        optimizer, lambda step: min(1.0, (step + 1) / warmup_steps) if warmup_steps else 1.0
+    )
     targets = torch.from_numpy(train_labels.astype(np.float32)).to(device)
     best_auc, best_state, waiting = -np.inf, None, 0
     history = []
@@ -211,6 +217,7 @@ def train_network(
             loss.backward()
             nn.utils.clip_grad_norm_(network.parameters(), 1.0)
             optimizer.step()
+            schedule.step()
             total += float(loss.detach()) * len(indices)
         auc = fast_auc(val_labels, predict_scores(network, val_inputs, device))
         improved = auc > best_auc + MIN_IMPROVEMENT

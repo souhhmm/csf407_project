@@ -1,2 +1,2 @@
 group,model,representation,k,params,seed,fit_seconds,best_epoch,epochs_run,n_parameters,val_auc,val_accuracy,val_f1,val_balanced_accuracy
-model,dnabert2_scratch,bpe_tokens_random_init,,"{""pooling"": 0}",42,1535.6197517879773,1,2,117069313,0.5005035728,0.5,0.0,0.5
+model,dnabert2_scratch,bpe_tokens_random_init,,"{""pooling"": 0}",42,4460.906660456909,1,4,117069313,0.7709316006,0.71607,0.7221792776837347,0.71607

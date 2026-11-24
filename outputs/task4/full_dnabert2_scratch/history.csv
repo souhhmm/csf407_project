@@ -1,3 +1,5 @@
 group,model,representation,k,params,seed,epoch,train_loss,val_auc,best_so_far,seconds
-model,dnabert2_scratch,bpe_tokens_random_init,,"{""pooling"": 0}",42,1,0.6950099740219117,0.5005035728,True,768.6087721670046
-model,dnabert2_scratch,bpe_tokens_random_init,,"{""pooling"": 0}",42,2,0.693557186782837,0.5001992246,False,765.6831847149879
+model,dnabert2_scratch,bpe_tokens_random_init,,"{""pooling"": 0}",42,1,0.5601421483764648,0.7709316006,True,771.5142846759409
+model,dnabert2_scratch,bpe_tokens_random_init,,"{""pooling"": 0}",42,2,0.5149884940490723,0.7414340162,False,767.7814567519818
+model,dnabert2_scratch,bpe_tokens_random_init,,"{""pooling"": 0}",42,3,0.5134535601997375,0.74009198,False,1307.676103820093
+model,dnabert2_scratch,bpe_tokens_random_init,,"{""pooling"": 0}",42,4,0.6889689705276489,0.49993,False,1611.6526421399321

@@ -113,6 +113,13 @@ def build_parser() -> argparse.ArgumentParser:
     interpret.add_argument("--fit-reads", type=int, default=400000)
     interpret.add_argument("--workers", type=int, default=16)
     interpret.add_argument("--seed", type=int, default=42)
+    figures = commands.add_parser(
+        "final-report",
+        help="Rebuild comparison figures, per-model plots and the task 4 summary.",
+    )
+    figures.add_argument("--results-dir", type=Path, default=Path("results/task4"))
+    figures.add_argument("--outputs-dir", type=Path, default=Path("outputs"))
+    figures.add_argument("--task5-dir", type=Path, default=Path("outputs/task5"))
     for command in (splits, simple, neural, task4, extra, genome, interpret):
         command.add_argument(
             "--splits-dir", type=Path, default=Path("data/processed/task4")
@@ -330,6 +337,10 @@ def main() -> int:
                 seed=args.seed,
                 workers=args.workers,
             )
+        if args.command == "final-report":
+            from src.final_report import build
+
+            build(args.results_dir, args.outputs_dir, args.task5_dir)
         if args.command == "genome-report":
             from src.genome_report import run_genome_report
 

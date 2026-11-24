@@ -25,7 +25,7 @@ FIXED = {
     "gru": {"lr": 1e-3, "dropout": 0.2},
     "transformer": {"lr": 3e-4, "dropout": 0.1, "d_model": 512, "heads": 8},
     "dnabert2": {"lr": 3e-5, "dropout": 0.1, "pad_id": 3},
-    "dnabert2_scratch": {"lr": 1e-4, "dropout": 0.1, "pad_id": 3},
+    "dnabert2_scratch": {"lr": 1e-4, "dropout": 0.1, "pad_id": 3, "warmup": 1000},
 }
 UNKNOWN_CODE = 4
 MASKED_SCORE = -1e4

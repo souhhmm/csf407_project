@@ -1,0 +1,14 @@
+group,model,representation,k,params,seed,epoch,train_loss,val_auc,best_so_far,seconds
+model,gru,word2vec_tokens,6,"{""hidden"": 256}",42,1,0.5025415120735168,0.7725928142,True,192.11865946091712
+model,gru,word2vec_tokens,6,"{""hidden"": 256}",42,2,0.45735727736091614,0.7650035492,False,190.94961240398698
+model,gru,word2vec_tokens,6,"{""hidden"": 256}",42,3,0.43158436604690553,0.7615128688,False,205.3531582360156
+model,gru,word2vec_tokens,6,"{""hidden"": 256}",42,4,0.4165763987007141,0.7751738492,True,211.79470831691287
+model,gru,word2vec_tokens,6,"{""hidden"": 256}",42,5,0.4054276125526428,0.7723246268,False,206.4346438080538
+model,gru,word2vec_tokens,6,"{""hidden"": 256}",42,6,0.395598775100708,0.7692173916,False,207.55257020401768
+model,gru,word2vec_tokens,6,"{""hidden"": 256}",42,7,0.386842343460083,0.7735835632,False,203.33929141401313
+model,gru,word2vec_tokens,6,"{""hidden"": 256}",42,8,0.3804652188415527,0.7689381634,False,206.18093190295622
+model,gru,word2vec_tokens,6,"{""hidden"": 512}",42,1,0.5161815061683654,0.7815269638,True,273.5327932999935
+model,gru,word2vec_tokens,6,"{""hidden"": 512}",42,2,0.470881609664917,0.7675715998,False,271.4310717538465
+model,gru,word2vec_tokens,6,"{""hidden"": 512}",42,3,0.44402402812194824,0.7629705814,False,271.1696116651874
+model,gru,word2vec_tokens,6,"{""hidden"": 512}",42,4,0.427592385257721,0.7784919034,False,271.8431070179213
+model,gru,word2vec_tokens,6,"{""hidden"": 512}",42,5,0.416301266040802,0.7672394822,False,274.4193203900941

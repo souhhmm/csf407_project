@@ -564,7 +564,25 @@ NEURAL_LABELS = {
     "cnn": "CNN on one-hot reads",
     "gru": "BiGRU on words",
     "transformer": "Transformer on words",
+    "dnabert2": "DNABERT-2 (pretrained)",
+    "dnabert2_scratch": "DNABERT-2 architecture (random init)",
 }
+PARAM_NAMES = {"hidden": "hidden", "filters": "filters", "layers": "layers", "pooling": ""}
+
+
+def _setting_label(params: str, k) -> str:
+    """Turn a JSON grid setting such as {"hidden": 256} into a short legend label."""
+    import json
+
+    values = json.loads(params) if isinstance(params, str) else {}
+    parts = [
+        (PARAM_NAMES.get(name, name) + " " + str(value)).strip()
+        for name, value in values.items()
+        if name != "pooling"
+    ]
+    if not parts:
+        parts = ["default"]
+    return ", ".join(parts) + ("" if pd.isna(k) else ", k=" + str(int(k)))
 
 
 def _best_per_model(models: pd.DataFrame) -> pd.DataFrame:
@@ -600,7 +618,9 @@ def plot_neural_comparison(
     positions = np.arange(len(rows))[::-1]
     for axis, split in zip(axes, ["test_1", "test_2"]):
         for position, (label, row, color) in zip(positions, rows):
-            axis.barh(position, row[split + "_auc_mean"], color=color, height=0.6)
+            axis.barh(
+                position, row[split + "_auc_mean"] - 0.5, left=0.5, color=color, height=0.6
+            )
             if not np.isnan(row[split + "_auc_low"]):
                 axis.plot(
                     [row[split + "_auc_low"], row[split + "_auc_high"]],
@@ -609,15 +629,16 @@ def plot_neural_comparison(
                     linewidth=1.2,
                 )
             axis.text(
-                0.452,
+                1.0,
                 position,
                 format(row[split + "_auc_mean"], ".3f"),
                 va="center",
+                ha="right",
                 fontsize=8,
-                color="white",
+                color="#233044",
             )
         axis.axvline(0.5, linestyle="--", color="0.6", linewidth=1)
-        axis.set(title=SPLIT_LABELS[split] + " AUC", xlim=(0.45, 1))
+        axis.set(title=SPLIT_LABELS[split] + " AUC", xlim=(0.5, 1.0))
     axes[0].set_yticks(positions, [label for label, _, _ in rows])
     _finish(figure, axes, path, categorical=True)
 
@@ -646,7 +667,7 @@ def plot_training_curves(history: pd.DataFrame, path: Path):
         for number, ((k, params), curve) in enumerate(
             part.groupby(["k", "params"], dropna=False)
         ):
-            label = params + ("" if pd.isna(k) else ", k=" + str(k))
+            label = _setting_label(params, k)
             axis.plot(
                 curve["epoch"],
                 curve["val_auc"],
@@ -657,7 +678,8 @@ def plot_training_curves(history: pd.DataFrame, path: Path):
                 label=label,
             )
         axis.set(title=NEURAL_LABELS[model], xlabel="Epoch")
-        axis.legend(frameon=False, fontsize=6)
+        axis.xaxis.set_major_locator(MaxNLocator(integer=True))
+        axis.legend(frameon=False, fontsize=7)
     axes[0][0].set_ylabel("Validation AUC")
     _finish(figure, axes, path, categorical=True)
 

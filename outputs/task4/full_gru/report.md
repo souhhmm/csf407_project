@@ -1,6 +1,6 @@
 # Task 4: neural models on DeePaC train, validation, and test reads
 
-Networks are small on purpose (see the parameter counts). The grid setting and the stopping epoch are chosen on validation reads only, and the test sets are scored once, for the validation-chosen setting. All splits come from different genomes.
+The grid setting and the stopping epoch are chosen on validation reads only, and the test sets are scored once, for the validation-chosen setting. All splits come from different genomes.
 
 ## Data
 
@@ -35,3 +35,8 @@ The complete tables are `results_summary.csv` (averaged over seeds), `results.cs
 - Selecting the best row by test score would be tuning on the test set; use the validation ranking.
 - GPU training is not bit-for-bit repeatable, so reruns of the same seed can differ slightly. Seeds are for spread, not exact reproduction.
 - A gap between train and validation AUC means the network is memorising species-specific reads; the test sets are species the networks never saw.
+
+## Added after the run
+
+- Genome-level metrics and the extra test sets (BacPaCS, 150/100 bp reads, shuffled letters) are in `genome/genome_summary.csv`; cross-model figures are in `../summary/`.
+- Validation AUC is noisy (45 genomes) and early epochs are often best, so the stopping epoch and setting choice carry little information.

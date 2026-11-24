@@ -328,7 +328,7 @@ Details, timings and decisions are in `memory_and_progress.md`.
 
 | Result (read AUC) | Value |
 | --- | --- |
-| Test, neural models | 0.86–0.90 (random-init DNABERT-2: 0.50, not trained long enough to judge) |
+| Test, neural models | 0.86–0.90 (random-init DNABERT-2: 0.84 after adding learning-rate warmup; without it, 0.50) |
 | Test, best simple model | 0.85 (gradient boosting on k-mer counts) |
 | Reads cut to 150 / 100 bp | about 0.83 / 0.79 |
 | Letters shuffled | about 0.54 |
@@ -339,6 +339,8 @@ Genome-level AUC is higher (about 0.87–0.93 on test) because averaging reads h
 **Step 5** (`run.py interpret`, `outputs/task5/`): per-genome word effects with Mann-Whitney tests and BH correction, replicated on held-out genomes (top 6-mer direction agreement 100%), GC per genome (weak: AUC 0.41–0.45), LR and forest importances, and reverse-complement tests of the embeddings (Word2Vec does not learn strand symmetry).
 
 **Step 6** (`src/llm_prompts.py`, `src/llm_experiment.py`, `outputs/task6/`): three OpenRouter models (Gemini 3.1 Flash Lite, GLM-5.2, Claude Sonnet 5.5) answered four questions three times each, with a decoy run using swapped class names. The held-out sets were hidden, so some answers are real predictions. Claims are scored in `llm_claim_scores.md`. The key is read from `~/.config/csf407/openrouter_key` and never stored in the repo.
+
+**Caveats found in review.** Validation AUC (about 0.78) is noisy: the validation set has 45 genomes and three nonpathogenic ones hold about 60% of that class, so choosing settings and stopping epochs on it is close to random. Most networks peak after 1–2 epochs while training loss keeps falling (they learn the training genomes), so larger models and longer training did not help (`full_gru_long`). Single-seed runs differ by about 0.02 test AUC. Gradient boosting is skipped for tables wider than 1024 columns. Cross-model figures and the summary table are in `outputs/task4/summary/` (`run.py final-report` rebuilds them); T5 and T6 figures are in `outputs/task5/` and `outputs/task6/`.
 
 **GPU setup notes.** DNABERT-2 needs `transformers==4.46.3` and a patched local copy under `data/models/dnabert2` (not in Git). Large data and environments live outside the repo and are linked in.
 

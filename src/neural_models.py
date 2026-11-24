@@ -125,6 +125,7 @@ def _train(
         context["max_epochs"],
         context["patience"],
         context["batch_size"],
+        FIXED[model].get("warmup", 0),
     )
     return network, history, time.perf_counter() - started
 
@@ -244,7 +245,7 @@ def _report(
     lines = [
         "# Task 4: neural models on DeePaC train, validation, and test reads",
         "",
-        "Networks are small on purpose (see the parameter counts). The grid setting and the stopping epoch are chosen on validation reads only, and the test sets are scored once, for the validation-chosen setting. All splits come from different genomes.",
+        "The grid setting and the stopping epoch are chosen on validation reads only, and the test sets are scored once, for the validation-chosen setting. All splits come from different genomes.",
         "",
         "## Data",
         "",

@@ -15,7 +15,7 @@
   "workers": 8,
   "n_jobs": 40,
   "bootstrap": 100,
-  "max_epochs": 2,
+  "max_epochs": 6,
   "patience": 3,
   "batch_size": 256,
   "train_limit": 1000000,
@@ -50,7 +50,8 @@
     "dnabert2_scratch": {
       "lr": 0.0001,
       "dropout": 0.1,
-      "pad_id": 3
+      "pad_id": 3,
+      "warmup": 1000
     }
   },
   "grids": {
@@ -328,5 +329,5 @@
     "matplotlib": "3.9.4"
   },
   "python": "3.12.14",
-  "runtime_seconds": 3043.889453402953
+  "runtime_seconds": 6241.235486697173
 }

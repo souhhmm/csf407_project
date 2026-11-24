@@ -1,6 +1,6 @@
 # Task 4: neural models on DeePaC train, validation, and test reads
 
-Networks are small on purpose (see the parameter counts). The grid setting and the stopping epoch are chosen on validation reads only, and the test sets are scored once, for the validation-chosen setting. All splits come from different genomes.
+The grid setting and the stopping epoch are chosen on validation reads only, and the test sets are scored once, for the validation-chosen setting. All splits come from different genomes.
 
 ## Data
 
@@ -16,7 +16,17 @@ The intervals resample whole genomes within each class; their bounds are average
 
 | Model | Representation | k | Parameters | Val AUC | Test 1 AUC | Test 1 95% interval | Test 2 AUC | Train AUC |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| dnabert2_scratch | bpe_tokens_random_init | n/a | 117069313 | 0.501 | 0.501 | 0.500–0.502 | 0.501 | 0.501 |
+| dnabert2_scratch | bpe_tokens_random_init | n/a | 117069313 | 0.771 | 0.837 | 0.720–0.898 | 0.835 | 0.836 |
+
+## Best simple models, for comparison
+
+From `simple_models/results_summary.csv`, ranked the same way.
+
+| Model | Representation | k | Val AUC | Test 1 AUC | Test 2 AUC |
+| --- | --- | --- | --- | --- | --- |
+| random_forest | counts | 4 | 0.788 | 0.829 | 0.828 |
+| logistic_regression | weighted_vectors | 4 | 0.788 | 0.829 | 0.828 |
+| logistic_regression | counts | 3 | 0.786 | 0.828 | 0.827 |
 
 The complete tables are `results_summary.csv` (averaged over seeds), `results.csv` (every seed), `tuning.csv` (every setting tried, validation only) and `history.csv` (every epoch).
 
@@ -35,3 +45,8 @@ The complete tables are `results_summary.csv` (averaged over seeds), `results.cs
 - Selecting the best row by test score would be tuning on the test set; use the validation ranking.
 - GPU training is not bit-for-bit repeatable, so reruns of the same seed can differ slightly. Seeds are for spread, not exact reproduction.
 - A gap between train and validation AUC means the network is memorising species-specific reads; the test sets are species the networks never saw.
+
+## Added after the run
+
+- Genome-level metrics and the extra test sets (BacPaCS, 150/100 bp reads, shuffled letters) are in `genome/genome_summary.csv`; cross-model figures are in `../summary/`.
+- Validation AUC is noisy (45 genomes) and early epochs are often best, so the stopping epoch and setting choice carry little information.
