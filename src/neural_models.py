@@ -10,12 +10,20 @@ import numpy as np
 import pandas as pd
 import torch
 
-from src.classifiers import METRICS, genome_bootstrap_interval, score_metrics
+from src.classifiers import (
+    METRICS,
+    genome_bootstrap_interval,
+    save_scores,
+    score_metrics,
+)
 from src.features import encode_sequences, load_or_build_representations
 from src.networks import (
+    DEFAULT_MODELS,
     FIXED,
     GRIDS,
     NEURAL_MODELS,
+    PRETRAINED_MODELS,
+    DNABERT_PATH,
     count_parameters,
     make_network,
 )
@@ -25,11 +33,12 @@ from src.neural_training import (
     predict_scores,
     seed_everything,
     select_device,
+    tokenize_reads,
     train_network,
 )
 from src.plots import plot_neural_comparison, plot_training_curves
 from src.simple_models import POSITIVE_LABEL, _table, summarize_results
-from src.splits import EVALUATION_SPLITS, load_splits
+from src.splits import evaluation_splits, load_splits
 
 
 CONTROL_REPEATS = 2
@@ -39,17 +48,31 @@ REPRESENTATION_NAMES = {
     "cnn": "one_hot_reads",
     "gru": "word2vec_tokens",
     "transformer": "word_tokens",
+    "dnabert2": "bpe_tokens_pretrained",
+    "dnabert2_scratch": "bpe_tokens_random_init",
 }
 USES_WORDS = {"mlp", "gru", "transformer"}
 
 
+def _tag(meta: dict, seed: int) -> str:
+    """Name a configuration and seed for its saved scores and weights."""
+    return (
+        "_".join(str(meta[key]) for key in ("group", "model", "representation", "k"))
+        + "_s"
+        + str(seed)
+    )
+
+
 def _evaluate(
-    network: torch.nn.Module, inputs: dict, context: dict, labels: dict
+    network: torch.nn.Module, inputs: dict, context: dict, labels: dict, tag: str
 ) -> dict:
     """Score every split with a trained network and add genome-level intervals."""
     row = {}
-    for split in ("train",) + tuple(EVALUATION_SPLITS):
+    kept = {}
+    for split in ("train",) + tuple(context["eval_splits"]):
         scores = predict_scores(network, inputs[split], context["device"])
+        if split != "train":
+            kept[split] = scores
         for name, value in score_metrics(labels[split], scores).items():
             row[split + "_" + name] = value
         if split != "train":
@@ -62,6 +85,11 @@ def _evaluate(
             )
             row[split + "_auc_low"] = low
             row[split + "_auc_high"] = high
+    save_scores(context["score_dir"], tag, kept)
+    if context["score_dir"] is not None:
+        folder = context["score_dir"].parent / "weights"
+        folder.mkdir(exist_ok=True)
+        torch.save(network.state_dict(), folder / (tag + ".pt"))
     return row
 
 
@@ -121,7 +149,9 @@ def _run_configuration(
     grid = GRIDS[model]
     names = list(grid)
     candidates = (
-        [dict(zip(names, values)) for values in itertools.product(*grid.values())]
+        [dict(zip(names, values)) for values in itertools.product(*grid.values())][
+            : context["max_grid"]
+        ]
         if group == "model"
         else [{name: grid[name][0] for name in names}]
     )
@@ -182,7 +212,9 @@ def _run_configuration(
                 "seed": seed,
                 "params": json.dumps(params),
                 "n_parameters": count_parameters(network),
-                **_evaluate(network, setup["inputs"], context, labels),
+                **_evaluate(
+                    network, setup["inputs"], context, labels, _tag(meta, seed)
+                ),
             }
         )
     print(
@@ -326,7 +358,7 @@ def run_neural_models(
     feature_dir: Path,
     simple_summary: Optional[Path] = None,
     ks: Sequence[int] = (3, 6),
-    models: Sequence[str] = NEURAL_MODELS,
+    models: Sequence[str] = DEFAULT_MODELS,
     vector_size: int = 64,
     window: int = 5,
     epochs: int = 10,
@@ -338,6 +370,10 @@ def run_neural_models(
     patience: int = 3,
     batch_size: int = 256,
     device: str = "auto",
+    train_limit: int = 0,
+    fit_limit: int = 0,
+    max_grid: int = 99,
+    save_per_read: bool = True,
 ) -> dict:
     """Train small neural networks on the published splits and compare them.
 
@@ -361,6 +397,11 @@ def run_neural_models(
         patience: Epochs without validation improvement before stopping.
         batch_size: Reads per update.
         device: auto, cuda, mps, or cpu.
+        train_limit: Train on only the first this-many (shuffled) reads; 0 keeps all.
+        fit_limit: Learn weights and word vectors from only this many training
+            reads; 0 uses every training read.
+        max_grid: Largest number of grid settings to try per model.
+        save_per_read: Whether to save per-read scores and final weights.
 
     Returns:
         The saved settings and runtime.
@@ -377,6 +418,8 @@ def run_neural_models(
     chosen = select_device(device)
     seed_everything(seeds[0], n_jobs)
     records, manifest = load_splits(splits_dir)
+    if train_limit:
+        records["train"] = records["train"][:train_limit]
     names = list(records)
     sequences = {name: [row["sequence"] for row in records[name]] for name in names}
     codes = {name: encode_sequences(sequences[name]) for name in names}
@@ -392,6 +435,9 @@ def run_neural_models(
         },
         "seeds": list(seeds),
         "bootstrap": bootstrap,
+        "eval_splits": evaluation_splits(manifest),
+        "score_dir": output_dir / "scores" if save_per_read else None,
+        "max_grid": max_grid,
         "device": chosen,
         "length": codes["train"].shape[1],
         "max_epochs": max_epochs,
@@ -413,6 +459,25 @@ def run_neural_models(
         setup = {"inputs": reads, "features": 0}
         record(_run_configuration("cnn", None, setup, context))
         record(_run_configuration("cnn", None, setup, context, group="control"))
+    pretrained = [name for name in models if name in PRETRAINED_MODELS]
+    if pretrained:
+        from transformers import AutoTokenizer
+
+        tokenizer = AutoTokenizer.from_pretrained(DNABERT_PATH, trust_remote_code=True)
+        started_tokens = time.perf_counter()
+        tokens = {
+            name: tokenize_reads(sequences[name], tokenizer, chosen) for name in names
+        }
+        print(
+            "Tokenized reads in "
+            + format(time.perf_counter() - started_tokens, ".0f")
+            + " s",
+            flush=True,
+        )
+        for name in pretrained:
+            setup = {"inputs": tokens, "features": 0}
+            record(_run_configuration(name, None, setup, context))
+        del tokens
     for k in ks:
         if not USES_WORDS & set(models):
             break
@@ -429,6 +494,8 @@ def run_neural_models(
                 epochs,
                 seeds[0],
                 workers,
+                fit_limit,
+                train_limit,
             )
         if "mlp" in models:
             tables = {
@@ -491,6 +558,9 @@ def run_neural_models(
         "max_epochs": max_epochs,
         "patience": patience,
         "batch_size": batch_size,
+        "train_limit": train_limit,
+        "fit_limit": fit_limit,
+        "max_grid": max_grid,
         "device": str(chosen),
         "fixed_settings": FIXED,
         "grids": GRIDS,

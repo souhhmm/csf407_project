@@ -1,0 +1,10 @@
+tag,seed,split,read_auc,genome_weighted_auc,genome_auc,genome_accuracy,genome_balanced_accuracy,genomes_nonpathogenic,genomes_pathogenic
+model_dnabert2_scratch_bpe_tokens_random_init_None,42,val,0.5005035728,0.5003438055084335,0.5641025641025641,0.13333333333333333,0.5,6,39
+model_dnabert2_scratch_bpe_tokens_random_init_None,42,test_1,0.50094496995,0.5007562178648886,0.5982905982905983,0.13333333333333333,0.5,6,39
+model_dnabert2_scratch_bpe_tokens_random_init_None,42,test_2,0.5012348193,0.5011050038404654,0.7094017094017094,0.13333333333333333,0.5,6,39
+model_dnabert2_scratch_bpe_tokens_random_init_None,42,bacpacs_test_1,0.500539386,0.500438520319322,0.575625,0.4,0.5,40,60
+model_dnabert2_scratch_bpe_tokens_random_init_None,42,bacpacs_test_2,0.5006365108,0.5000545727680261,0.5333333333333333,0.4,0.5,40,60
+model_dnabert2_scratch_bpe_tokens_random_init_None,42,test_1_len100,0.5006167214921827,0.5002878228636738,0.5726495726495726,0.13333333333333333,0.5,6,39
+model_dnabert2_scratch_bpe_tokens_random_init_None,42,test_1_len150,0.5005368456278236,0.5007486949972442,0.6282051282051282,0.13333333333333333,0.5,6,39
+model_dnabert2_scratch_bpe_tokens_random_init_None,42,test_1_letters_shuffled,0.50008185825,0.5000520477085273,0.5811965811965812,0.13333333333333333,0.5,6,39
+model_dnabert2_scratch_bpe_tokens_random_init_None,42,test_pooled,0.501089899875,0.5009364818900738,0.7863247863247863,0.13333333333333333,0.5,6,39

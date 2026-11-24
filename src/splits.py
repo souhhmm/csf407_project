@@ -350,3 +350,102 @@ def load_splits(splits_dir: Path) -> Tuple[Dict[str, List[dict]], dict]:
             )
         records_by_split[name], _ = load_dataset(path)
     return records_by_split, manifest
+
+
+EXTRA_SOURCES = {
+    "bacpacs_test_1": (
+        {
+            "filename": "nonpatho_bacpacs_test_1.fasta.gz",
+            "label": "nonpathogenic",
+            "md5": "bce2cc1dc464a5b27eed18de3fddad85",
+        },
+        {
+            "filename": "patho_bacpacs_test_1.fasta.gz",
+            "label": "pathogenic",
+            "md5": "0f390d097c9299bd9031c58c3c99b5be",
+        },
+    ),
+    "bacpacs_test_2": (
+        {
+            "filename": "nonpatho_bacpacs_test_2.fasta.gz",
+            "label": "nonpathogenic",
+            "md5": "6e691a2c9023001dfc654ea214db6f56",
+        },
+        {
+            "filename": "patho_bacpacs_test_2.fasta.gz",
+            "label": "pathogenic",
+            "md5": "b8ed47e64ec332e68ed3c3cc6251f546",
+        },
+    ),
+}
+TRUNCATED_LENGTHS = (100, 150)
+
+
+def prepare_extra_sets(
+    data_dir: Path, splits_dir: Path, per_class: int, seed: int = 42
+) -> List[str]:
+    """Add out-of-distribution and shortened-read evaluation sets to prepared splits.
+
+    BacPaCS test reads come from a different curated database (different genome
+    ids and labelling), and shortened sets are the test_1 reads cut to their first
+    100 or 150 letters, or with the letters of each read shuffled (which keeps
+    composition but destroys order). They are only ever evaluated, never trained on or used to
+    choose settings, and they are not part of the genome-disjointness audit.
+
+    Args:
+        data_dir: Parent directory whose raw subdirectory holds the downloads.
+        splits_dir: Directory written by prepare_splits.
+        per_class: Reads per class to keep from each BacPaCS test file.
+        seed: Fixed random setting.
+
+    Returns:
+        Names of the extra sets now listed in the manifest.
+
+    Raises:
+        ValueError: If the splits have not been prepared.
+    """
+    manifest_path = splits_dir / "manifest.json"
+    if not manifest_path.exists():
+        raise ValueError("Prepare the splits first: " + str(splits_dir))
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    extra = {}
+    for name, files in EXTRA_SOURCES.items():
+        candidates = []
+        for number, source in enumerate(files):
+            path = download_source(source, data_dir / "raw")
+            records, _ = sample_split_records(
+                path, per_class * 2, seed + number, source["label"], name
+            )
+            candidates.extend(records)
+        extra[name], _ = curate_candidates(candidates, per_class, seed)
+    base = load_dataset(splits_dir / "test_1.csv")[0]
+    for length in TRUNCATED_LENGTHS:
+        extra["test_1_len" + str(length)] = [
+            {**row, "sequence": row["sequence"][:length]} for row in base
+        ]
+    rng = random.Random(seed)
+    extra["test_1_letters_shuffled"] = [
+        {**row, "sequence": "".join(rng.sample(row["sequence"], len(row["sequence"])))}
+        for row in base
+    ]
+    manifest["extra_sets"] = {}
+    for name, records in extra.items():
+        target = splits_dir / (name + ".csv")
+        with target.open("w", encoding="utf-8", newline="") as handle:
+            writer = csv.DictWriter(handle, fieldnames=SPLIT_FIELDS)
+            writer.writeheader()
+            writer.writerows(records)
+        manifest["csv_sha256"][name] = file_digest(target)
+        manifest["extra_sets"][name] = {
+            "reads": len(records),
+            "genomes": len({record["genome"] for record in records}),
+            "per_class": dict(Counter(record["label"] for record in records)),
+        }
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    print("Added extra sets: " + ", ".join(extra), flush=True)
+    return list(extra)
+
+
+def evaluation_splits(manifest: dict) -> Tuple[str, ...]:
+    """List the splits that are scored: validation, both tests, and any extra sets."""
+    return EVALUATION_SPLITS + tuple(manifest.get("extra_sets", {}))

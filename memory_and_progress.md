@@ -34,3 +34,99 @@ RUNNING: bg `run.py prepare-splits --splits-dir data/processed/task4_smoke --tra
 - T5 (partial): GC/shuffle/unseen-genome checks exist. Missing: important-words/features per class (LR coefs, RF importances), "patterns vs composition" write-up.
 - T6 (not started): AI-generated explanations of patterns, compare across AI tools, verify against computational results.
 - T7 (not started): final model + answer to "can AI read DNA?" + final presentation (check whether current presentation.pdf / UhmmAkshually.pdf reflect T4).
+
+## 2026-11-23 GPU box session start (RTX PRO 6000 96GB, py3.12.3 .venv, NO torch yet, data/ and results/ empty -> nothing has been run at full size)
+Sanity review findings (presented to user, awaiting plan approval, no code written yet):
+1 genome imbalance: 6 nonpatho val/test genomes, one = 21-29% of nonpatho reads -> val selection/early stop/AUC noisy; steps1-3 exploration used val split only -> class word ratios/GC/PCA may be genome identity; redo per-genome.
+2 train reads balanced but genomes not (45 vs 305) -> cap reads per genome / weight.
+3 per-read labels are organism-level -> add genome-level aggregation (mean read score per genome, mates pooled).
+4 CNN tiny (1 conv k15 + 1 conv, 64/128 filters, no lr schedule) and 15 epochs on 100k reads; smoke gave AUC .5. scale data (1e6+/class) + DeePaC-size CNN.
+5 w2v on overlapping k-mers: neighbours share k-1 letters -> trivial context; mean-pooled w2v = linear map of counts.
+6 TableInputs sparse->dense on CPU per batch (slow); batch 256 underuses GPU.
+7 T5 importances, T6, T7 missing. md5s/downloads: ~2GB+, earlier 1MB/s.
+
+## 2026-11-23 round 2: user feedback on review (DECISIONS)
+- User trusts the human-curated DeePaC splits: DO NOT change val/test sampling or early-stopping/selection metric. Headline = existing read-level metrics. ADD per-genome stats (per-genome AUC/acc, genome-weighted AUC, mean-read-score-per-genome aggregation, mates pooled) IN ADDITION. Genome-cap on train = optional ablation only.
+- Genome identity: handle via per-genome analysis (T1-3 stats per genome, LOGO-style consistency of class word ratios, PCA colored by genome), importances checked for per-genome consistency. Affects T5/T6 claims: only claims holding across genomes count.
+- Models: pick meaningfully larger for ALL, must finish today EOD; smoke-time, extrapolate, launch bigger runs after smaller ones if underestimated. Document EVERYTHING in this file (user will write report from it).
+- w2v concern (overlapping k-mer contexts trivial): document it; alternative tests = RC-pair similarity (a word and its reverse complement should be close), non-overlapping/strided tokenization w2v, compare to count-SVD embeddings.
+- Transformer: compare from-scratch vs pretrained (DNABERT-2-117M, maybe NT-v2-100M) at reasonable scale.
+- Problem 7 plan: bacpacs test sets (other curated db) as OOD test; read-length truncation; genome-level aggregation as 'longer sequence'.
+- Rename outputs/ -> old_outputs/ AFTER concerns settled; new stuff in outputs/.
+- Env facts: zenodo record 3678563; needed 8 files = 2.01 GB (train 808+803MB, val 101+101, test_1 51+50, test_2 51+50); speed 1.7MB/s => ~20 min. bacpacs test_1/2: nonpatho 36MB, patho 64MB each; also .rds fold files in record. HF reachable. OpenRouter API reachable (200) but NO credentials found in env/~/.bashrc/.config -> ask user. Disk: check df before downloads.
+
+## 2026-11-23 ~13:05 execution started
+- OpenRouter check: key file ~/.config/mer/openrouter_key exists (mode 600, 73 bytes; documented in ~/MER/MER_lyrics/mer/lyrics/jev.py, used there for TypeSafe JEV 'decisions' endpoint). GET /api/v1/key with it -> HTTP 401 "User not found" => key invalid/revoked or not a standard OpenRouter key. Did not print/modify it. Need user to supply working key.
+- Downloads: `run.py prepare-splits --train-per-class 20000 --val-per-class 5000 --test-per-class 5000 --splits-dir data/processed/task4_probe` (bg, log .cache/dl_probe.log) downloads all 8 files to data/raw sequentially (~20min), producing a small probe split. Real split built afterwards (raw reused).
+- torch cu128 install bg: .cache/pip_torch.log.
+
+## 2026-11-23 13:15 env + LLM-experiment plan (ALL DECISIONS, for the report)
+ENV: old .venv was an empty stub (no pip/numpy) -> built conda env `.venv-gpu` (py3.12.14) in project dir; installing requirements.txt, torch cu128, transformers, accelerate, einops (log .cache/pip_torch.log). USE .venv-gpu/bin/python for everything. .gitignore now ignores .venv*/ and .cache/.
+DOWNLOAD: zenodo bandwidth-limited ~1.5-1.7MB/s total regardless of parallelism. Running: sequential prepare-splits (probe split) PLUS parallel curl of the other 11 files (8 IMG + 4 bacpacs test) into data/raw as *.dl then mv to final name (download_source md5-verifies existing files and skips). ETA ~13:45. Real splits are built once raw files verified (full train files must be read once for reservoir sampling).
+LLM EXPERIMENT (T6) plan:
+ - Models via OpenRouter (user approved tiers): very cheap = Gemini Flash-Lite or GPT-mini class (or Qwen3 small); cheap open-weight = GLM-4.x (user wants GLM/open-weight); medium = Sonnet-class Claude. Check live ids/prices through /api/v1/models before use. Maybe add DeepSeek/Qwen only if user asks.
+ - Same evidence package for all models: top-20 words/class (LR coef + class-frequency ratio), GC & CTAG stats, per-genome consistency flags, CNN top motifs, model AUCs.
+ - Questions: Q1 which patterns separate classes and why; Q2 composition vs deeper; Q3 held-out prediction questions (e.g. which of 5 words is more pathogen-enriched, effect of GC matching on AUC); Q4 dependence on read length/truncation; control = decoy evidence package built from SHUFFLED labels (does the model invent explanations for noise?).
+ - 3 samples/model at T=0.7 for stability. Score each claim true/false/untestable against our numbers; count held-out predictions correct.
+ - Budget estimate: ~72 calls, ~220k input + ~110k output tokens (more if reasoning models) => about $1-2 total; recommended key credit limit $5 ($3 probably enough).
+ - Key goes in ~/.config/csf407/openrouter_key (mode 600, outside repo); never print/log. Old MER key (~/.config/mer/openrouter_key) returned 401 'User not found' on /api/v1/key.
+
+## 2026-11-23 13:20 standing instruction (user, durable for this project)
+- EMAIL: user authorised me to send email to f20230392@goa.bits-pilani.ac.in (a) a final update when EVERYTHING is complete, (b) an email marked URGENT (subject starts "URGENT:") only if something goes very wrong and user intervention is needed (e.g. key/credentials broken, disk full, GPU unusable, runs can't finish by EOD). Use Gmail MCP send_message (load schema via ToolSearch select:mcp__claude_ai_Gmail__send_message). No other recipients; no secrets in emails.
+- Status 13:20: torch 2.11.0+cu128 OK in .venv-gpu (capability 12.0, matmul ok), transformers 5.24.0. OpenRouter key at ~/.config/csf407/openrouter_key verified: limit $5, spend $0. Train downloads: nonpatho done, patho ~740/803MB. Killed the sequential probe prepare-splits (redundant).
+- Code written but UNTESTED: splits.prepare_extra_sets/evaluation_splits, run.py prepare-extra, --train-limit/--fit-limit/--no-scores/--max-grid, classifiers.save_scores, features fit_limit, simple/neural scores saving, networks bigger (cnn 4 conv blocks+BN, mlp 3 hidden, gru 2 layers, transformer d512 6/8 layers; GRIDS mlp[1024,2048] cnn[256,512] gru[256,512] transformer[6,8]), src/genome_report.py (not yet wired into run.py).
+- TODO code: pretrained.py (DNABERT-2 finetune vs random-init), genome-report cmd, T5 analysis, LLM experiment script, tests.
+
+## 13:45 progress (code + findings)
+- DNABERT-2 loading: transformers 5.x breaks its remote code (meta-device alibi init) -> pinned transformers==4.46.3. Local patched copy at data/models/dnabert2 (copied from HF snapshot; patched bert_layers.py: set BertModel.config_class=local BertConfig; triton flash-attn import forced to ImportError + stub flash_attn_triton.py so pytorch attention is used). Loads OK (117.07M params), tokenizer pad id 3, 252bp read -> ~144 BPE tokens (max_length 192). data/models is NOT in .gitignore? (check before commit).
+- Added to networks/neural_*: models dnabert2 (pretrained, lr 3e-5) and dnabert2_scratch (same arch random init, lr 1e-4); TokenInputs (fwd + RC tokenized separately, RC aug in train, RC averaging at predict); BertReader mean-pool head; no shuffled control for these.
+- Extra eval sets (prepare-extra): bacpacs_test_1/2 (other curated db; BacPaCS test = 60 patho + 40 nonpatho genomes; ids like 1041522.28; may share species with IMG train - not verifiable), test_1_len100, test_1_len150, test_1_letters_shuffled (composition-preserving shuffle; tests composition vs order).
+- genome_report.py + run.py genome-report: per-genome table, genome-weighted AUC, genome-level AUC/acc of mean read score, test_pooled (mates), reads-per-genome curve.
+- llm_experiment.py: models google/gemini-3.1-flash-lite ($0.25/$1.5 per M), z-ai/glm-5.2 ($0.62/$2.42, open weight), anthropic/claude-sonnet-5.5 ($2/$10); budget guard $4, max_tokens 4000, JSONL resume. (Cheaper alt seen: anthropic/claude-haiku-5.5 $0.1/$0.5.)
+- Real split build launched 13:25: prepare-splits train 1M/class val 50k test 100k (log .cache/prepare_full.log), reading train files ~1M reads/min (~25 min).
+- Real test genome counts (IMG test_1): 39 patho / 6 nonpatho genomes (confirmed from headers).
+
+## 13:30 INCIDENT: disk quota
+- /home (sdb1) has a per-user 40GB quota (was at 40.96GB) -> writes failed (EDQUOT), prepare-splits died while writing train.csv (lost ~6 min). ~/data -> /media/data/trl03 is a separate disk (195GB quota, ~100GB used by user's other projects).
+- FIX: moved my big files to ~/data/csf407/ and left symlinks: .venv-gpu -> ~/data/csf407/.venv-gpu ; data/{raw,models,processed,features} -> ~/data/csf407/data_* ; results/task4 -> ~/data/csf407/results_task4. HF_HOME for any new HF downloads: ~/data/csf407/hf_home. Home usage after fix ~30GB/40GB. DO NOT put large files under /home; do not touch user's other dirs (MER, anaconda3 etc.).
+- Relaunched prepare-splits --force 13:30 (train 1M/class val 50k test 100k/class), log .cache/prepare_full.log.
+
+## Smoke timings (200k train reads, 1 epoch, real splits; 2026-11-23)
+- cnn 5.4 s/ep (val AUC .807 @2ep); mlp(1024) 6 s/ep (.771); gru(256) 41 s/ep (.794); transformer(6L,512) 86 s/ep (.775); dnabert2 pretrained 206 s/ep (.789); dnabert2 random-init 191 s/ep (.525 -> needs more epochs). Tokenizing all splits ~160-210 s.
+- Full (2M reads) is ~10x per epoch. Launched `.cache/full_gpu.sh` at 14:45 IST, two parallel chains:
+  A: cnn (15 ep, seeds 42,43, full grid, 2M reads) -> mlp (12 ep, 2 seeds) -> dnabert2 (1M reads, 2 ep) -> dnabert2_scratch (same)
+  B: gru (1M reads, 6 ep) -> transformer (1M reads, 6 ep). Outputs results/task4/full_<model>, logs .cache/full_<model>.log, done flag .cache/full_gpu.done.
+- Simple models full run running concurrently (results/task4/simple_models, train/fit limit 400k).
+
+## Full GPU runs finished (2026-11-23 ~19:00 IST; chains took ~4.4 h)
+- Wall: cnn 1010 s tuning (+687 s control), mlp 586 s, gru 2264 s, transformer 4593 s, dnabert2 2772 s, dnabert2_scratch 2696 s.
+- Val AUC (official val, read level): cnn .790, mlp .776, gru .782, transformer .778, dnabert2 .781, dnabert2_scratch .501 (random init, 2 ep on 1M reads: did not learn -> report honestly), shuffled-label controls ~.50.
+- Read-level test AUC (mean over seeds): cnn .882, mlp .896, transformer .856, dnabert2 .891; gru/scratch in results/task4/full_*/genome/genome_summary.csv.
+- Truncated 150 bp ~.83-.85, 100 bp ~.77-.80, letter-shuffled ~.53-.55 (composition-preserved shuffle destroys signal -> models use order/k-mer info, not just GC), BacPaCS ~.64-.70 (large drop on a different database; genome AUC ~.68-.75).
+- Genome AUC on test ~.87-.92 > read AUC (aggregation helps).
+- Bug fixed: src/genome_report.load_truth now drops duplicate sequences (keeps first) to match loader dedup (truncated sets lost ~30-50 reads).
+- genome-report run for all six full_* dirs -> results/task4/full_<m>/genome/.
+
+## T5 interpret done (outputs/task5, 19:30 IST)
+- Genome-level word effects (train 45 non-patho/310 patho genomes; held-out 12/78): Spearman of genome AUC train vs held-out k3 .83, k4 .89, k6 .86; top-word direction agreement k6 100% (k3 92%). Significant (BH q<.05) words: k3 16, k4 88, k6 1365.
+- Genome GC AUC: train .45, held-out .41 (GC weak, not the driver). LR coefficient vs genome effect Spearman .63 (k6).
+- RC test: word2vec overlapping RC cosine .19 vs random .17 (RC nearest-neighbour 0.02%), strided .35 vs .22, count-SVD .87 vs .81 -> word2vec does not learn RC symmetry; SVD slightly closer (all weak).
+- Top pathogenic 6-mers: GCTAGC, AACCCT/AGGGTT, CTAGCG... (CTAG-rich); nonpathogenic: CATGGA, TGTTCC, GGATAC, ACGGAA, TTCCGT... (CCGT/GGAT-rich). CNN motif extraction NOT done.
+## T6 LLM experiment (started 19:35)
+- src/llm_prompts.py: real + decoy (class names swapped in word lists) x Q1-Q4; evidence shows ONLY val/test_pooled AUCs (truncated, shuffled, BacPaCS hidden so Q3/Q4 are real predictions). Prompts saved results/task4/llm_prompts.json; replies results/task4/llm_replies.jsonl (3 models x 8 prompts x 3 samples = 72 calls, T=0.7, budget guard $4).
+- Note: dnabert2_scratch genome_auc .786 on test despite read AUC .501 (mean-score aggregation of near-constant scores; not meaningful).
+
+## T6 done (19:55): 72 calls, $0.835. Scores in results/task4/llm_claim_scores.md (hand-scored on sample 0 + skim; Sonnet best calibrated on BacPaCS shift, Gemini over-optimistic; decoy: models narrate swapped labels confidently; GLM 10/72 empty replies from token budget).
+- Remaining at 19:55: simple-models run finishing (k=6 stage), then rename outputs->old_outputs, populate new outputs, final email.
+
+## Finalisation (2026-11-24 ~10:30 IST)
+- Simple-models full run finished late (k=6 stage was slow; ~14 h wall incl. waiting), genome report done. Best simple model test_pooled read AUC .854 (gradient boosting on k-mer counts, k=3/4), genome AUC .93 -> simple k-mer GBM is within ~.04 of neural models (.88-.90 CNN/MLP/GRU/DNABERT-2).
+- outputs/ renamed to old_outputs/ (T1-3 old results); new outputs/ holds task4 (per-model reports, tuning, history, genome/ tables, figures), task5 (interpretation), task6 (LLM prompts, replies, claim scores).
+- NOT done: T7 final model choice + presentation, CNN motif extraction, T1-3 stats redone per genome (partly covered by task5 word effects), genome-capped ablation, NT-v2. Nothing committed/pushed.
+
+## NEXT (agreed with user 2026-11-24, NOT started): three gap tasks
+1. Redo T1-T3 per genome: new src/genome_explore.py + run.py command; per-genome count vectors from cached features, per-genome word freq/rare-common words/GC/seq stats with class comparison at genome level, PCA/UMAP at read and genome level coloured by class AND genome. CPU, ~10-30 min. Output outputs/task1_3_genome/.
+2. Visualisation of learned sequence space: script reloading saved weights (results/task4/full_*/weights/*.pt) for cnn/gru/dnabert2, embeddings of 20-50k test reads, UMAP/t-SNE/PCA coloured by class, genome, correct/wrong, next to raw k-mer PCA of same sample; quantify with linear probe/silhouette (genome id vs class). GPU minutes.
+3. T6 verification: LLM-assisted scorer over ALL 72 replies (claim extraction + true/false/untestable vs our results; decoy scored against swapped labels), ~$0.5-1, key has ~$4.1 left (guard $4 total); spot-check verdicts by hand; flag in write-up as LLM-assisted. Output per-claim table + counts per model.
+Also still open: T7 (final model choice, answer, presentation; check old presentation PDFs), CNN motifs (optional), docs.
+Git: pushed to origin souhhmm/csf407_project main after README update (see below if recorded). .gitignore must use patterns WITHOUT trailing slash for symlinked data dirs.

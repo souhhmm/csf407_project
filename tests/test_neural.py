@@ -50,7 +50,14 @@ def test_every_network_gives_one_score_per_read():
         assert network(codes).shape == (3,)
     mlp = make_network("mlp", {"hidden": 16}, 3, 64, 60, None)
     assert mlp(torch.zeros(3, 64)).shape == (3,)
-    assert set(NEURAL_MODELS) == {"mlp", "cnn", "gru", "transformer"}
+    assert set(NEURAL_MODELS) == {
+        "mlp",
+        "cnn",
+        "gru",
+        "transformer",
+        "dnabert2",
+        "dnabert2_scratch",
+    }
 
 
 def test_prediction_is_the_same_for_a_read_and_its_reverse_complement():
@@ -82,7 +89,22 @@ def test_training_learns_a_separable_signal_and_restores_best_weights():
     assert fast_auc(labels, restored) == pytest.approx(best, abs=1e-6)
 
 
-def test_run_saves_tables_figures_and_report(synthetic_sources, tmp_path):
+def test_run_saves_tables_figures_and_report(synthetic_sources, tmp_path, monkeypatch):
+    # Shrink the networks so the run is quick on a CPU.
+    from src import networks
+
+    for name, grid in {
+        "mlp": {"hidden": [16, 32]},
+        "cnn": {"filters": [8, 16]},
+        "gru": {"hidden": [8, 16]},
+        "transformer": {"layers": [1, 2]},
+    }.items():
+        monkeypatch.setitem(networks.GRIDS, name, grid)
+    monkeypatch.setitem(
+        networks.FIXED,
+        "transformer",
+        {"lr": 5e-4, "dropout": 0.1, "d_model": 32, "heads": 4},
+    )
     data_dir, sources = synthetic_sources
     splits = tmp_path / "splits"
     prepare_splits(data_dir, splits, SIZES, 7, sources=sources)
@@ -107,7 +129,13 @@ def test_run_saves_tables_figures_and_report(synthetic_sources, tmp_path):
         "training_curves.png",
     }
     summary = pd.read_csv(output / "results_summary.csv")
-    assert set(summary[summary["group"] == "model"]["model"]) == set(NEURAL_MODELS)
+    assert set(summary[summary["group"] == "model"]["model"]) == {
+        "mlp",
+        "cnn",
+        "gru",
+        "transformer",
+    }
+    assert any((output / "scores").glob("*.npz"))
     assert (summary["group"] == "control").any()
     tuning = pd.read_csv(output / "tuning.csv")
     assert "test_1_auc" not in tuning.columns

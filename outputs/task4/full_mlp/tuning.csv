@@ -1,0 +1,3 @@
+group,model,representation,k,params,seed,fit_seconds,best_epoch,epochs_run,n_parameters,val_auc,val_accuracy,val_f1,val_balanced_accuracy
+model,mlp,tfidf,6,"{""hidden"": 1024}",42,132.56515309703536,1,4,5770241,0.7756595112,0.74572,0.7550666563920783,0.7457199999999999
+model,mlp,tfidf,6,"{""hidden"": 2048}",42,123.96589862997644,1,4,14686209,0.7755613154,0.74801,0.7603268054670483,0.7480100000000001

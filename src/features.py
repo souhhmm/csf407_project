@@ -169,6 +169,7 @@ def build_representations(
     seed: int = 42,
     workers: int = 1,
     train: str = "train",
+    fit_limit: int = 0,
 ) -> dict:
     """Learn representations from the training split and apply them to every split.
 
@@ -184,6 +185,8 @@ def build_representations(
         seed: Fixed random setting.
         workers: Word2Vec CPU workers.
         train: Name of the split used for learning.
+        fit_limit: Learn only from this many leading training reads (0 = all);
+            every training read is still transformed.
 
     Returns:
         Words, inverse-document weights, word vectors, and for each split the
@@ -195,9 +198,10 @@ def build_representations(
     if train not in sequences_by_split:
         raise ValueError("The training split is missing.")
     counts = {name: count_words(rows, k) for name, rows in sequences_by_split.items()}
-    weighting = TfidfTransformer().fit(counts[train])
+    fitted = fit_limit or len(sequences_by_split[train])
+    weighting = TfidfTransformer().fit(counts[train][:fitted])
     vectors, _ = fit_word_vectors(
-        sequences_by_split[train], k, vector_size, window, epochs, seed, workers
+        sequences_by_split[train][:fitted], k, vector_size, window, epochs, seed, workers
     )
     splits = {}
     for name, table in counts.items():
@@ -295,6 +299,8 @@ def load_or_build_representations(
     epochs: int = 10,
     seed: int = 42,
     workers: int = 1,
+    fit_limit: int = 0,
+    train_limit: int = 0,
 ) -> dict:
     """Reuse saved representations for these settings, or learn and save them.
 
@@ -309,6 +315,8 @@ def load_or_build_representations(
         epochs: Word2Vec passes over the training reads.
         seed: Fixed random setting.
         workers: Word2Vec CPU workers.
+        fit_limit: Learn only from this many leading training reads (0 = all).
+        train_limit: Training reads kept by the caller, recorded so caches differ.
 
     Returns:
         The result of build_representations.
@@ -319,6 +327,8 @@ def load_or_build_representations(
         "window": window,
         "epochs": epochs,
         "seed": seed,
+        "fit_limit": fit_limit,
+        "train_limit": train_limit,
         "splits": split_digests,
     }
     directory = feature_dir / ("k_" + str(k))
@@ -327,7 +337,14 @@ def load_or_build_representations(
     )
     if representations is None:
         representations = build_representations(
-            sequences_by_split, k, vector_size, window, epochs, seed, workers
+            sequences_by_split,
+            k,
+            vector_size,
+            window,
+            epochs,
+            seed,
+            workers,
+            fit_limit=fit_limit,
         )
         save_representations(representations, directory, settings)
     else:

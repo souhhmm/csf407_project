@@ -1,0 +1,3 @@
+group,model,representation,k,params,seed,fit_seconds,best_epoch,epochs_run,n_parameters,val_auc,val_accuracy,val_f1,val_balanced_accuracy
+model,transformer,word_tokens,6,"{""layers"": 6}",42,1453.6922143341508,1,4,21139457,0.776536697,0.72879,0.7368349554130239,0.72879
+model,transformer,word_tokens,6,"{""layers"": 8}",42,2540.280312221963,2,5,27444225,0.7777402032,0.7274,0.7296922100587022,0.7274

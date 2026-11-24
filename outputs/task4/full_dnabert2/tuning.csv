@@ -1,0 +1,2 @@
+group,model,representation,k,params,seed,fit_seconds,best_epoch,epochs_run,n_parameters,val_auc,val_accuracy,val_f1,val_balanced_accuracy
+model,dnabert2,bpe_tokens_pretrained,,"{""pooling"": 0}",42,1609.8233777689748,1,2,117069313,0.7808585562,0.74932,0.7547642340050871,0.74932

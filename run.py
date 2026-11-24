@@ -12,7 +12,7 @@ MODELS = (
     "naive_bayes",
     "gradient_boosting",
 )
-NEURAL_MODELS = ("mlp", "cnn", "gru", "transformer")
+NEURAL_MODELS = ("mlp", "cnn", "gru", "transformer", "dnabert2", "dnabert2_scratch")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -86,9 +86,54 @@ def build_parser() -> argparse.ArgumentParser:
             action="store_true",
             help="Replace the existing processed splits.",
         )
-    for command in (splits, simple, neural, task4):
+    extra = commands.add_parser(
+        "prepare-extra",
+        help="Add BacPaCS and shortened-read evaluation sets to prepared splits.",
+    )
+    extra.add_argument("--data-dir", type=Path, default=Path("data"))
+    extra.add_argument("--per-class", type=int, default=50000)
+    extra.add_argument("--seed", type=int, default=42)
+    genome = commands.add_parser(
+        "genome-report",
+        help="Add per-genome statistics to saved per-read scores of a results folder.",
+    )
+    genome.add_argument("--results-dir", type=Path, required=True)
+    genome.add_argument("--output-dir", type=Path, default=None)
+    genome.add_argument(
+        "--curve-splits",
+        nargs="+",
+        default=["test_1", "bacpacs_test_1"],
+        help="Splits for which to compute the reads-per-genome curve.",
+    )
+    interpret = commands.add_parser(
+        "interpret",
+        help="Per-genome word effects, importances and embedding checks (task 5).",
+    )
+    interpret.add_argument("--output-dir", type=Path, default=Path("outputs/task5"))
+    interpret.add_argument("--fit-reads", type=int, default=400000)
+    interpret.add_argument("--workers", type=int, default=16)
+    interpret.add_argument("--seed", type=int, default=42)
+    for command in (splits, simple, neural, task4, extra, genome, interpret):
         command.add_argument(
             "--splits-dir", type=Path, default=Path("data/processed/task4")
+        )
+    for command in (simple, neural, task4):
+        command.add_argument(
+            "--train-limit",
+            type=int,
+            default=0,
+            help="Use only the first N (shuffled) training reads; 0 keeps all.",
+        )
+        command.add_argument(
+            "--fit-limit",
+            type=int,
+            default=0,
+            help="Learn tf-idf weights and word vectors from the first N training reads; 0 uses all.",
+        )
+        command.add_argument(
+            "--no-scores",
+            action="store_true",
+            help="Do not save per-read scores (and network weights).",
         )
     for command in (simple, task4):
         command.add_argument(
@@ -166,8 +211,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--models",
         nargs="+",
         choices=NEURAL_MODELS,
-        default=list(NEURAL_MODELS),
-        help="Networks to train.",
+        default=["mlp", "cnn", "gru", "transformer"],
+        help="Networks to train (dnabert2 variants are opt-in).",
     )
     neural.add_argument("--vector-size", type=int, default=64)
     neural.add_argument("--window", type=int, default=5)
@@ -205,6 +250,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Epochs without validation improvement before stopping.",
     )
     neural.add_argument("--batch-size", type=int, default=256)
+    neural.add_argument(
+        "--max-grid",
+        type=int,
+        default=99,
+        help="Largest number of grid settings tried per model.",
+    )
     neural.add_argument(
         "--device", choices=("auto", "cuda", "mps", "cpu"), default="auto"
     )
@@ -269,6 +320,31 @@ def main() -> int:
                 args.seed,
                 args.force,
             )
+        if args.command == "interpret":
+            from src.interpret import run_interpretation
+
+            run_interpretation(
+                args.splits_dir,
+                args.output_dir,
+                fit_reads=args.fit_reads,
+                seed=args.seed,
+                workers=args.workers,
+            )
+        if args.command == "genome-report":
+            from src.genome_report import run_genome_report
+
+            run_genome_report(
+                args.splits_dir,
+                args.results_dir,
+                args.output_dir or args.results_dir / "genome",
+                tuple(args.curve_splits),
+            )
+        if args.command == "prepare-extra":
+            from src.splits import prepare_extra_sets
+
+            prepare_extra_sets(
+                args.data_dir, args.splits_dir, args.per_class, args.seed
+            )
         if args.command in ("simple-models", "task4"):
             from src.simple_models import run_simple_models
 
@@ -286,6 +362,9 @@ def main() -> int:
                 n_jobs=args.n_jobs,
                 trees=args.trees,
                 bootstrap=args.bootstrap,
+                train_limit=args.train_limit,
+                fit_limit=args.fit_limit,
+                save_per_read=not args.no_scores,
             )
         if args.command == "neural-models":
             from src.neural_models import run_neural_models
@@ -308,6 +387,10 @@ def main() -> int:
                 patience=args.patience,
                 batch_size=args.batch_size,
                 device=args.device,
+                train_limit=args.train_limit,
+                fit_limit=args.fit_limit,
+                max_grid=args.max_grid,
+                save_per_read=not args.no_scores,
             )
         if args.command in ("prepare", "all"):
             from src.data import prepare_dataset

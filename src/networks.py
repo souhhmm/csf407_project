@@ -6,19 +6,26 @@ from torch import nn
 from torch.nn import functional
 
 
-NEURAL_MODELS = ("mlp", "cnn", "gru", "transformer")
+NEURAL_MODELS = ("mlp", "cnn", "gru", "transformer", "dnabert2", "dnabert2_scratch")
+DEFAULT_MODELS = ("mlp", "cnn", "gru", "transformer")
+PRETRAINED_MODELS = ("dnabert2", "dnabert2_scratch")
+DNABERT_PATH = "data/models/dnabert2"
 # One setting per model is compared on validation data; the rest stay fixed.
 GRIDS = {
-    "mlp": {"hidden": [128, 512]},
-    "cnn": {"filters": [64, 128]},
-    "gru": {"hidden": [64, 128]},
-    "transformer": {"layers": [2, 4]},
+    "mlp": {"hidden": [1024, 2048]},
+    "cnn": {"filters": [256, 512]},
+    "gru": {"hidden": [256, 512]},
+    "transformer": {"layers": [6, 8]},
+    "dnabert2": {"pooling": [0]},
+    "dnabert2_scratch": {"pooling": [0]},
 }
 FIXED = {
     "mlp": {"lr": 1e-3, "dropout": 0.3},
-    "cnn": {"lr": 1e-3, "dropout": 0.3, "kernel": 15},
-    "gru": {"lr": 1e-3, "dropout": 0.3},
-    "transformer": {"lr": 5e-4, "dropout": 0.1, "d_model": 128, "heads": 4},
+    "cnn": {"lr": 1e-3, "dropout": 0.2, "kernel": 15},
+    "gru": {"lr": 1e-3, "dropout": 0.2},
+    "transformer": {"lr": 3e-4, "dropout": 0.1, "d_model": 512, "heads": 8},
+    "dnabert2": {"lr": 3e-5, "dropout": 0.1, "pad_id": 3},
+    "dnabert2_scratch": {"lr": 1e-4, "dropout": 0.1, "pad_id": 3},
 }
 UNKNOWN_CODE = 4
 MASKED_SCORE = -1e4
@@ -77,6 +84,9 @@ class WordMLP(nn.Module):
             nn.Linear(features, hidden),
             nn.ReLU(),
             nn.Dropout(dropout),
+            nn.Linear(hidden, hidden),
+            nn.ReLU(),
+            nn.Dropout(dropout),
             nn.Linear(hidden, hidden // 2),
             nn.ReLU(),
             nn.Dropout(dropout),
@@ -88,24 +98,33 @@ class WordMLP(nn.Module):
 
 
 class ReadCNN(nn.Module):
-    """One-hot convolutional network in the style of DeePaC.
+    """One-hot convolutional network in the style of DeePaC, but deeper.
 
-    Filters slide along the read and the strongest response of each filter is
-    kept, so a motif counts wherever it sits. Unknown letters are all zeros.
+    Four convolution blocks (batch norm, ReLU) with pooling, then the mean and
+    the strongest response of every filter over the read. Unknown letters are
+    all zeros.
     """
 
     def __init__(self, filters: int, kernel: int, dropout: float):
         super().__init__()
+
+        def block(inputs: int, outputs: int, width: int, pool: bool) -> list:
+            layers = [
+                nn.Conv1d(inputs, outputs, width, padding=width // 2),
+                nn.BatchNorm1d(outputs),
+                nn.ReLU(),
+            ]
+            return layers + ([nn.MaxPool1d(2)] if pool else [])
+
         self.convolutions = nn.Sequential(
-            nn.Conv1d(4, filters, kernel, padding=kernel // 2),
-            nn.ReLU(),
-            nn.MaxPool1d(2),
-            nn.Conv1d(filters, filters, 7, padding=3),
-            nn.ReLU(),
+            *block(4, filters, kernel, True),
+            *block(filters, filters, 9, True),
+            *block(filters, filters, 5, False),
+            *block(filters, filters, 5, False),
         )
         self.head = nn.Sequential(
             nn.Dropout(dropout),
-            nn.Linear(filters, filters),
+            nn.Linear(2 * filters, filters),
             nn.ReLU(),
             nn.Dropout(dropout),
             nn.Linear(filters, 1),
@@ -113,8 +132,11 @@ class ReadCNN(nn.Module):
 
     def forward(self, codes: torch.Tensor) -> torch.Tensor:
         onehot = functional.one_hot(codes.long().clamp(max=UNKNOWN_CODE), 5)[..., :4]
-        states = self.convolutions(onehot.transpose(1, 2).to(self.head[1].weight.dtype))
-        return self.head(states.max(dim=2).values).squeeze(-1)
+        states = self.convolutions(
+            onehot.transpose(1, 2).to(self.head[1].weight.dtype)
+        )
+        pooled = torch.cat([states.mean(dim=2), states.max(dim=2).values], dim=1)
+        return self.head(pooled).squeeze(-1)
 
 
 class WordGRU(nn.Module):
@@ -133,7 +155,14 @@ class WordGRU(nn.Module):
         self.embedding = nn.Embedding(vocabulary + 1, width, padding_idx=vocabulary)
         with torch.no_grad():
             self.embedding.weight[:vocabulary] = torch.from_numpy(word_vectors)
-        self.recurrent = nn.GRU(width, hidden, batch_first=True, bidirectional=True)
+        self.recurrent = nn.GRU(
+            width,
+            hidden,
+            num_layers=2,
+            batch_first=True,
+            bidirectional=True,
+            dropout=dropout,
+        )
         self.head = nn.Sequential(nn.Dropout(dropout), nn.Linear(4 * hidden, 1))
 
     def forward(self, codes: torch.Tensor) -> torch.Tensor:
@@ -186,6 +215,36 @@ class WordTransformer(nn.Module):
         return self.head(_masked_pool(states, valid)).squeeze(-1)
 
 
+class BertReader(nn.Module):
+    """DNABERT-2 (117M, byte-pair tokens) with a mean-pooled linear read-out.
+
+    The encoder starts from the published pretrained weights, or from random
+    weights of the same architecture, so the two differ only in pretraining.
+    """
+
+    def __init__(self, pretrained: bool, dropout: float, pad_id: int):
+        super().__init__()
+        from transformers import AutoConfig, AutoModel
+
+        self.pad_id = pad_id
+        if pretrained:
+            self.encoder = AutoModel.from_pretrained(
+                DNABERT_PATH, trust_remote_code=True
+            )
+        else:
+            config = AutoConfig.from_pretrained(DNABERT_PATH, trust_remote_code=True)
+            self.encoder = AutoModel.from_config(config, trust_remote_code=True)
+        width = self.encoder.config.hidden_size
+        self.head = nn.Sequential(nn.Dropout(dropout), nn.Linear(width, 1))
+
+    def forward(self, ids: torch.Tensor) -> torch.Tensor:
+        valid = ids != self.pad_id
+        states = self.encoder(input_ids=ids, attention_mask=valid.long())[0]
+        weights = valid.unsqueeze(-1).to(states.dtype)
+        pooled = (states * weights).sum(dim=1) / weights.sum(dim=1).clamp(min=1.0)
+        return self.head(pooled).squeeze(-1)
+
+
 def count_parameters(network: nn.Module) -> int:
     """Count the trainable values in a network."""
     return sum(parameter.numel() for parameter in network.parameters())
@@ -235,4 +294,6 @@ def make_network(
             int(fixed["heads"]),
             fixed["dropout"],
         )
+    if model in PRETRAINED_MODELS:
+        return BertReader(model == "dnabert2", fixed["dropout"], int(fixed["pad_id"]))
     raise ValueError("Unknown neural model: " + model)

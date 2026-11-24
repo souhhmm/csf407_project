@@ -1,6 +1,6 @@
 # DNA/RNA as a language
 
-This project implements **steps 1–3** of the course project: turning sequences into words, exploring those words, and applying language-processing ideas. It stops before training models that predict disease classes.
+This project implements the course project: turning sequences into words (steps 1–3), classifying reads with simple and neural models (step 4), asking what the models learned (step 5) and testing AI-generated explanations (step 6). Steps 1–3 results from the first sample are kept in `old_outputs/`; the full-size runs are in `outputs/task4`, `outputs/task5` and `outputs/task6` (summary at the end of this file). Step 7 (final model and presentation) is not done yet.
 
 The default dataset is a balanced sample of 10,000 DNA sequences from [DeePaC](https://zenodo.org/records/3678563): 5,000 from each source class. Everything runs on the CPU; a separate GPU is not needed.
 
@@ -280,7 +280,7 @@ New checks cover split sampling and genome separation, agreement of the fast wor
 
 # Task 4, part 2: neural models
 
-Small neural networks trained on the same species-disjoint DeePaC splits and scored with the same metrics, genome-level intervals and row format as the simple models, so the two summaries can be compared directly. Torch is an optional extra: nothing above needs it.
+Neural networks trained on the same species-disjoint DeePaC splits and scored with the same metrics, genome-level intervals and row format as the simple models, so the two summaries can be compared directly. Torch is an optional extra: nothing above needs it.
 
 | Model | Input | Notes |
 | --- | --- | --- |
@@ -289,7 +289,7 @@ Small neural networks trained on the same species-disjoint DeePaC splits and sco
 | `gru` | overlapping words (k = 3, 6) | bidirectional GRU, embeddings start from the train-only Word2Vec vectors |
 | `transformer` | overlapping words (k = 3, 6) | 2 or 4 pre-norm layers, width 128, trained from scratch |
 
-All are small (roughly 0.15–2 million values). The CNN, GRU and transformer see both strands: strands are flipped at random during training and the scores of a read and its reverse complement are averaged when predicting. One setting per model is compared on validation AUC, early stopping and the choice of epoch use validation reads only, the winner is retrained with the other seeds, and the test sets are scored once. A CNN trained on shuffled training labels is the leak control. Pretrained DNA models are not included yet.
+The table shows the original small settings; the full run used larger grids (see the last section). The CNN, GRU and transformer see both strands: strands are flipped at random during training and the scores of a read and its reverse complement are averaged when predicting. One setting per model is compared on validation AUC, early stopping and the choice of epoch use validation reads only, the winner is retrained with the other seeds, and the test sets are scored once. A CNN trained on shuffled training labels is the leak control. Pretrained DNA models are not included yet.
 
 ## Run it on the GPU machine
 
@@ -316,3 +316,30 @@ Options: `--models` (any of mlp cnn gru transformer, to run one tier at a time),
 Outputs go to `results/task4/neural_models/`: `report.md`, `results_summary.csv`, `results.csv`, `tuning.csv`, `history.csv` (every epoch), `summary.json` and `figures/` (`neural_comparison.png`, `training_curves.png`). GPU training is not bit-for-bit repeatable; seeds give spread, not exact reruns.
 
 Tests that need torch are skipped when it is not installed: `python -m pytest -q`.
+
+
+# Full-size runs, extra test sets, interpretation and LLM check
+
+Details, timings and decisions are in `memory_and_progress.md`.
+
+**Data.** Official DeePaC splits (genome-disjoint; 2M train reads, 355 genomes). Extra evaluation sets, built with `run.py prepare-extra`: BacPaCS (a different database), test reads cut to 100 and 150 bp, and test reads with letters shuffled inside each read. Read-level metrics stay the headline; `run.py genome-report` adds genome-weighted AUC, the AUC of each genome's mean read score and a reads-per-genome curve.
+
+**Models run** (`results/task4/full_<model>`, copied to `outputs/task4/`; per-read scores are saved): CNN, MLP, BiGRU, transformer from scratch, DNABERT-2 pretrained and the same architecture random-initialised, plus the simple models. A shuffled-label control sits at about 0.50.
+
+| Result (read AUC) | Value |
+| --- | --- |
+| Test, neural models | 0.86–0.90 (random-init DNABERT-2: 0.50, not trained long enough to judge) |
+| Test, best simple model | 0.85 (gradient boosting on k-mer counts) |
+| Reads cut to 150 / 100 bp | about 0.83 / 0.79 |
+| Letters shuffled | about 0.54 |
+| BacPaCS | 0.64–0.70 |
+
+Genome-level AUC is higher (about 0.87–0.93 on test) because averaging reads helps.
+
+**Step 5** (`run.py interpret`, `outputs/task5/`): per-genome word effects with Mann-Whitney tests and BH correction, replicated on held-out genomes (top 6-mer direction agreement 100%), GC per genome (weak: AUC 0.41–0.45), LR and forest importances, and reverse-complement tests of the embeddings (Word2Vec does not learn strand symmetry).
+
+**Step 6** (`src/llm_prompts.py`, `src/llm_experiment.py`, `outputs/task6/`): three OpenRouter models (Gemini 3.1 Flash Lite, GLM-5.2, Claude Sonnet 5.5) answered four questions three times each, with a decoy run using swapped class names. The held-out sets were hidden, so some answers are real predictions. Claims are scored in `llm_claim_scores.md`. The key is read from `~/.config/csf407/openrouter_key` and never stored in the repo.
+
+**GPU setup notes.** DNABERT-2 needs `transformers==4.46.3` and a patched local copy under `data/models/dnabert2` (not in Git). Large data and environments live outside the repo and are linked in.
+
+**Still to do:** per-genome redo of steps 1–3, plots of learned embeddings, fuller scoring of LLM claims, and step 7.

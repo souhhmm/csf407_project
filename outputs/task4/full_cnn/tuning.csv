@@ -1,0 +1,4 @@
+group,model,representation,k,params,seed,fit_seconds,best_epoch,epochs_run,n_parameters,val_auc,val_accuracy,val_f1,val_balanced_accuracy
+model,cnn,one_hot_reads,,"{""filters"": 256}",42,255.5242515070131,2,5,1395201,0.7904175172,0.75287,0.7706641672621313,0.7528699999999999
+model,cnn,one_hot_reads,,"{""filters"": 512}",42,272.55190245294943,2,5,5542913,0.7899403518,0.75322,0.7694075873668473,0.75322
+control,cnn,one_hot_reads,,"{""filters"": 256}",42,211.9481340169441,2,5,1395201,0.5000300526,0.5,0.0,0.5

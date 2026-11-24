@@ -1,0 +1,332 @@
+{
+  "scope": "task 4, neural models",
+  "ks": [
+    6
+  ],
+  "models": [
+    "dnabert2"
+  ],
+  "vector_size": 64,
+  "window": 5,
+  "word2vec_epochs": 10,
+  "seeds": [
+    42
+  ],
+  "workers": 8,
+  "n_jobs": 40,
+  "bootstrap": 100,
+  "max_epochs": 2,
+  "patience": 3,
+  "batch_size": 256,
+  "train_limit": 1000000,
+  "fit_limit": 400000,
+  "max_grid": 1,
+  "device": "cuda",
+  "fixed_settings": {
+    "mlp": {
+      "lr": 0.001,
+      "dropout": 0.3
+    },
+    "cnn": {
+      "lr": 0.001,
+      "dropout": 0.2,
+      "kernel": 15
+    },
+    "gru": {
+      "lr": 0.001,
+      "dropout": 0.2
+    },
+    "transformer": {
+      "lr": 0.0003,
+      "dropout": 0.1,
+      "d_model": 512,
+      "heads": 8
+    },
+    "dnabert2": {
+      "lr": 3e-05,
+      "dropout": 0.1,
+      "pad_id": 3
+    },
+    "dnabert2_scratch": {
+      "lr": 0.0001,
+      "dropout": 0.1,
+      "pad_id": 3
+    }
+  },
+  "grids": {
+    "mlp": {
+      "hidden": [
+        1024,
+        2048
+      ]
+    },
+    "cnn": {
+      "filters": [
+        256,
+        512
+      ]
+    },
+    "gru": {
+      "hidden": [
+        256,
+        512
+      ]
+    },
+    "transformer": {
+      "layers": [
+        6,
+        8
+      ]
+    },
+    "dnabert2": {
+      "pooling": [
+        0
+      ]
+    },
+    "dnabert2_scratch": {
+      "pooling": [
+        0
+      ]
+    }
+  },
+  "splits_dir": "data/processed/task4",
+  "splits_manifest": {
+    "dataset": "DeePaC IMG bacterial DNA reads, published train, validation, and test files",
+    "dataset_url": "https://zenodo.org/records/3678563",
+    "paper_url": "https://doi.org/10.1093/bioinformatics/btz541",
+    "per_class": {
+      "train": 1000000,
+      "val": 50000,
+      "test_1": 100000,
+      "test_2": 100000
+    },
+    "seed": 42,
+    "sampling": "random reservoir candidates (2x requested) per file, deduplication, balanced random selection",
+    "sources": {
+      "train": [
+        {
+          "filename": "nonpathogenic_train.fasta.gz",
+          "label": "nonpathogenic",
+          "md5": "78596e6a34ec266f1e86804f9e44f9c2",
+          "url": "https://zenodo.org/records/3678563/files/nonpathogenic_train.fasta.gz?download=1",
+          "audit": {
+            "records_read": 10000024,
+            "eligible_records": 10000024
+          }
+        },
+        {
+          "filename": "pathogenic_train.fasta.gz",
+          "label": "pathogenic",
+          "md5": "760306b929c00e9072da6e1f0d82df20",
+          "url": "https://zenodo.org/records/3678563/files/pathogenic_train.fasta.gz?download=1",
+          "audit": {
+            "records_read": 10000151,
+            "eligible_records": 10000151
+          }
+        },
+        {
+          "sample_audit": {
+            "candidate_records": 4000000,
+            "repeated_candidate_records_removed": 443,
+            "conflicting_candidate_records_removed": 4,
+            "final_class_counts": {
+              "nonpathogenic": 1000000,
+              "pathogenic": 1000000
+            }
+          }
+        }
+      ],
+      "val": [
+        {
+          "filename": "nonpathogenic_val.fasta.gz",
+          "label": "nonpathogenic",
+          "md5": "696379f88117ddd2f4512d078abde17f",
+          "url": "https://zenodo.org/records/3678563/files/nonpathogenic_val.fasta.gz?download=1",
+          "audit": {
+            "records_read": 1250005,
+            "eligible_records": 1250005
+          }
+        },
+        {
+          "filename": "pathogenic_val.fasta.gz",
+          "label": "pathogenic",
+          "md5": "6b2e5c71634bd48a4c607e0979c09b2b",
+          "url": "https://zenodo.org/records/3678563/files/pathogenic_val.fasta.gz?download=1",
+          "audit": {
+            "records_read": 1250020,
+            "eligible_records": 1250020
+          }
+        },
+        {
+          "sample_audit": {
+            "candidate_records": 200000,
+            "repeated_candidate_records_removed": 11,
+            "conflicting_candidate_records_removed": 0,
+            "final_class_counts": {
+              "nonpathogenic": 50000,
+              "pathogenic": 50000
+            }
+          }
+        }
+      ],
+      "test_1": [
+        {
+          "filename": "nonpathogenic_test_1.fasta.gz",
+          "label": "nonpathogenic",
+          "md5": "e34306ddb3b693eff59448f6d8f7fab5",
+          "url": "https://zenodo.org/records/3678563/files/nonpathogenic_test_1.fasta.gz?download=1",
+          "audit": {
+            "records_read": 625003,
+            "eligible_records": 625003
+          }
+        },
+        {
+          "filename": "pathogenic_test_1.fasta.gz",
+          "label": "pathogenic",
+          "md5": "b79795f8c27e01eeee04e0723f3c2a1c",
+          "url": "https://zenodo.org/records/3678563/files/pathogenic_test_1.fasta.gz?download=1",
+          "audit": {
+            "records_read": 625019,
+            "eligible_records": 625019
+          }
+        },
+        {
+          "sample_audit": {
+            "candidate_records": 400000,
+            "repeated_candidate_records_removed": 27,
+            "conflicting_candidate_records_removed": 0,
+            "final_class_counts": {
+              "nonpathogenic": 100000,
+              "pathogenic": 100000
+            }
+          }
+        }
+      ],
+      "test_2": [
+        {
+          "filename": "nonpathogenic_test_2.fasta.gz",
+          "label": "nonpathogenic",
+          "md5": "d8e7d711da63f17a60bb7e543cf8e53a",
+          "url": "https://zenodo.org/records/3678563/files/nonpathogenic_test_2.fasta.gz?download=1",
+          "audit": {
+            "records_read": 625003,
+            "eligible_records": 625003
+          }
+        },
+        {
+          "filename": "pathogenic_test_2.fasta.gz",
+          "label": "pathogenic",
+          "md5": "f2af6eb49cffec82f8f426b6d7e478be",
+          "url": "https://zenodo.org/records/3678563/files/pathogenic_test_2.fasta.gz?download=1",
+          "audit": {
+            "records_read": 625019,
+            "eligible_records": 625019
+          }
+        },
+        {
+          "sample_audit": {
+            "candidate_records": 400000,
+            "repeated_candidate_records_removed": 26,
+            "conflicting_candidate_records_removed": 0,
+            "final_class_counts": {
+              "nonpathogenic": 100000,
+              "pathogenic": 100000
+            }
+          }
+        }
+      ]
+    },
+    "split_audit": {
+      "paired_test_reads": {
+        "test_1_reads": 200000,
+        "test_2_reads": 200000,
+        "reads_in_both": 123639
+      },
+      "genomes_per_split": {
+        "train": 355,
+        "val": 45,
+        "test_1": 45,
+        "test_2": 45
+      },
+      "genome_overlaps": {
+        "train & val": 0,
+        "train & test_1": 0,
+        "train & test_2": 0,
+        "val & test_1": 0,
+        "val & test_2": 0
+      },
+      "exact_sequence_overlaps": {
+        "train & val": 0,
+        "train & test_1": 1,
+        "train & test_2": 0,
+        "val & test_1": 0,
+        "val & test_2": 0,
+        "test_1 & test_2": 17
+      }
+    },
+    "csv_sha256": {
+      "train": "78eaebeccc58a1990e4507945f3fcb25f5d27f26cc9960237c9193b2d660e747",
+      "val": "f9f4c3b6f8fc9efcdaf184804ea232222d2a7fad322383f3af1f6c6738bfecf1",
+      "test_1": "02efcbd23923bc5aa0d0c429fca1b9ea9c7a10fe98dd1a5f9570e8fcfcd87e9b",
+      "test_2": "99062914a6dfa8323efd88818cb0a7693b534b99d87efd3ce41514fd6b255505",
+      "bacpacs_test_1": "3d8f7084575331655f41496e71d74fda11c4fbc9d057e5ccf413a61a2b09bd62",
+      "bacpacs_test_2": "0d2cf6bca66bd17138dc6be8238c88dab18549b404050c7ca79c48ad64628d19",
+      "test_1_len100": "e7c4a0a032487921c29c81faf25e956659ef61b51d27ac240f73aba4661b1d62",
+      "test_1_len150": "7f0b49bdd760bef688f2dbce4ab3d8fa18b3918d554f90912b3069c678a0b650",
+      "test_1_letters_shuffled": "98444574455a61fde63524fee4ed96d397d0a8d6e1a385313327cbef573a74f1"
+    },
+    "label_meaning": "Labels belong to source organisms, not to individual disease-causing fragments.",
+    "test_sets": "test_1 and test_2 are the two mate reads of the same fragments (the same read ids), so they are two views of one test, not independent replicates.",
+    "extra_sets": {
+      "bacpacs_test_1": {
+        "reads": 100000,
+        "genomes": 100,
+        "per_class": {
+          "nonpathogenic": 50000,
+          "pathogenic": 50000
+        }
+      },
+      "bacpacs_test_2": {
+        "reads": 100000,
+        "genomes": 100,
+        "per_class": {
+          "nonpathogenic": 50000,
+          "pathogenic": 50000
+        }
+      },
+      "test_1_len100": {
+        "reads": 200000,
+        "genomes": 45,
+        "per_class": {
+          "nonpathogenic": 100000,
+          "pathogenic": 100000
+        }
+      },
+      "test_1_len150": {
+        "reads": 200000,
+        "genomes": 45,
+        "per_class": {
+          "nonpathogenic": 100000,
+          "pathogenic": 100000
+        }
+      },
+      "test_1_letters_shuffled": {
+        "reads": 200000,
+        "genomes": 45,
+        "per_class": {
+          "nonpathogenic": 100000,
+          "pathogenic": 100000
+        }
+      }
+    }
+  },
+  "software": {
+    "numpy": "1.26.4",
+    "pandas": "2.2.3",
+    "torch": "2.11.0+cu128",
+    "gensim": "4.3.3",
+    "matplotlib": "3.9.4"
+  },
+  "python": "3.12.14",
+  "runtime_seconds": 3089.549290775787
+}

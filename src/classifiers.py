@@ -2,7 +2,8 @@ import itertools
 import json
 import time
 import warnings
-from typing import Dict, Tuple
+from pathlib import Path
+from typing import Dict, Optional, Tuple
 
 import numpy as np
 from scipy import sparse
@@ -302,3 +303,20 @@ def select_configuration(
         if best is None or metrics["auc"] > best[0] or np.isnan(best[0]):
             best = (metrics["auc"], params, estimator)
     return best[1], best[2], rows
+
+
+def save_scores(directory: Optional[Path], tag: str, scores: Dict[str, np.ndarray]):
+    """Save every read's score for each evaluated split, for genome-level analysis.
+
+    Args:
+        directory: Destination directory, or None to skip saving.
+        tag: File name stem identifying the configuration and seed.
+        scores: Score array for each split name.
+    """
+    if directory is None:
+        return
+    directory.mkdir(parents=True, exist_ok=True)
+    np.savez_compressed(
+        directory / (tag + ".npz"),
+        **{name: values.astype(np.float32) for name, values in scores.items()},
+    )

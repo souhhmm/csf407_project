@@ -9,3 +9,13 @@ __pycache__/
 /data/features/
 .DS_Store
 presentation/
+.venv*/
+.cache/
+/data/models/
+
+/data/raw
+/data/processed
+/data/features
+/data/models
+/results/task4
+/.venv-gpu

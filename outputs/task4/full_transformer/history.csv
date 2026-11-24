@@ -1,0 +1,10 @@
+group,model,representation,k,params,seed,epoch,train_loss,val_auc,best_so_far,seconds
+model,transformer,word_tokens,6,"{""layers"": 6}",42,1,0.5234243641700744,0.776536697,True,364.6820702122059
+model,transformer,word_tokens,6,"{""layers"": 6}",42,2,0.4836225796051025,0.7735330598,False,363.79644432780333
+model,transformer,word_tokens,6,"{""layers"": 6}",42,3,0.473833531829834,0.771972343,False,362.3722421079874
+model,transformer,word_tokens,6,"{""layers"": 6}",42,4,0.4703477680721283,0.775705698,False,361.2394514819607
+model,transformer,word_tokens,6,"{""layers"": 8}",42,1,0.5237402903251648,0.7766792958,True,475.40412620292045
+model,transformer,word_tokens,6,"{""layers"": 8}",42,2,0.489746217086792,0.7777402032,True,476.7433448631782
+model,transformer,word_tokens,6,"{""layers"": 8}",42,3,0.4817955323638916,0.7766568434,False,477.74758083513007
+model,transformer,word_tokens,6,"{""layers"": 8}",42,4,0.4808165114612579,0.7670493984,False,558.1954390699975
+model,transformer,word_tokens,6,"{""layers"": 8}",42,5,0.4778086465816498,0.765632042,False,552.1792987328954

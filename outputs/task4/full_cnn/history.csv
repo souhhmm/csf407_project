@@ -1,0 +1,26 @@
+group,model,representation,k,params,seed,epoch,train_loss,val_auc,best_so_far,seconds
+model,cnn,one_hot_reads,,"{""filters"": 256}",42,1,0.4799008821372986,0.7582047602,True,56.1948066810146
+model,cnn,one_hot_reads,,"{""filters"": 256}",42,2,0.43538310615730286,0.7904175172,True,54.7294116159901
+model,cnn,one_hot_reads,,"{""filters"": 256}",42,3,0.4144409820365906,0.7628940114,False,50.72671564097982
+model,cnn,one_hot_reads,,"{""filters"": 256}",42,4,0.40018352847671507,0.7819427544,False,50.65720979694743
+model,cnn,one_hot_reads,,"{""filters"": 256}",42,5,0.3888172111625671,0.7827091396,False,41.46369609294925
+model,cnn,one_hot_reads,,"{""filters"": 512}",42,1,0.4792552831096649,0.7800964296,True,53.83134258002974
+model,cnn,one_hot_reads,,"{""filters"": 512}",42,2,0.43048962841033933,0.7899403518,True,51.87074887403287
+model,cnn,one_hot_reads,,"{""filters"": 512}",42,3,0.40570527736282347,0.7681213952,False,54.47776929999236
+model,cnn,one_hot_reads,,"{""filters"": 512}",42,4,0.38858319675064085,0.7811452304,False,55.72763315401971
+model,cnn,one_hot_reads,,"{""filters"": 512}",42,5,0.37342333065795896,0.780812484,False,56.633867073920555
+model,cnn,one_hot_reads,,"{""filters"": 256}",43,1,0.48176696393585206,0.7960430952,True,54.51041884801816
+model,cnn,one_hot_reads,,"{""filters"": 256}",43,2,0.43659267282485964,0.7830701114,False,70.88430743908975
+model,cnn,one_hot_reads,,"{""filters"": 256}",43,3,0.4152462492332458,0.7854385384,False,69.36021051602438
+model,cnn,one_hot_reads,,"{""filters"": 256}",43,4,0.4005893145370483,0.7649573602,False,56.12109274091199
+control,cnn,one_hot_reads,,"{""filters"": 256}",42,1,0.6935454950027465,0.4360928476,True,50.29866360104643
+control,cnn,one_hot_reads,,"{""filters"": 256}",42,2,0.6931581050300598,0.5000300526,True,43.74478633608669
+control,cnn,one_hot_reads,,"{""filters"": 256}",42,3,0.6931636020851135,0.4996899062,False,37.94686428795103
+control,cnn,one_hot_reads,,"{""filters"": 256}",42,4,0.6931551302413941,0.5,False,43.17714739497751
+control,cnn,one_hot_reads,,"{""filters"": 256}",42,5,0.6931564156532287,0.5,False,36.77381013694685
+control,cnn,one_hot_reads,,"{""filters"": 256}",43,1,0.6935155102043152,0.4996596748,True,37.73802483512554
+control,cnn,one_hot_reads,,"{""filters"": 256}",43,2,0.6931642314376831,0.4616223666,False,49.392304862849414
+control,cnn,one_hot_reads,,"{""filters"": 256}",43,3,0.6931647368888855,0.50001,True,32.24663181207143
+control,cnn,one_hot_reads,,"{""filters"": 256}",43,4,0.6931547152824402,0.5,False,49.903655466856435
+control,cnn,one_hot_reads,,"{""filters"": 256}",43,5,0.693153437664032,0.5,False,49.67205316084437
+control,cnn,one_hot_reads,,"{""filters"": 256}",43,6,0.6931549402618408,0.5,False,49.34728569700383

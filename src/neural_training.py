@@ -32,6 +32,32 @@ class TableInputs:
         return torch.from_numpy(self.table[indices].toarray()).to(self.device)
 
 
+class TokenInputs:
+    """Byte-pair token ids of reads on both strands, held on the device.
+
+    The reverse-complement strand is tokenized separately, since byte-pair
+    tokens cannot be flipped after the fact.
+    """
+
+    reverse_complement = False
+
+    def __init__(self, forward: np.ndarray, reverse: np.ndarray, device):
+        self.device = device
+        self.forward = torch.from_numpy(forward).to(device)
+        self.reverse = torch.from_numpy(reverse).to(device)
+
+    def __len__(self) -> int:
+        return self.forward.shape[0]
+
+    def batch(self, indices: np.ndarray) -> torch.Tensor:
+        """Return the forward-strand token ids at indices."""
+        return self.forward[torch.from_numpy(indices).to(self.device)]
+
+    def batch_rc(self, indices: np.ndarray) -> torch.Tensor:
+        """Return the reverse-complement token ids at indices."""
+        return self.reverse[torch.from_numpy(indices).to(self.device)]
+
+
 class ReadInputs:
     """Encoded reads held on the device, which the networks read letter by letter."""
 
@@ -111,6 +137,9 @@ def predict_scores(
             logits = network(batch).float()
             if flip:
                 logits = (logits + network(reverse_complement(batch)).float()) / 2
+            elif rc_average and hasattr(inputs, "batch_rc"):
+                other = network(inputs.batch_rc(indices)).float()
+                logits = (logits + other) / 2
             scores.append(torch.sigmoid(logits).cpu().numpy())
     return np.concatenate(scores).astype(np.float64)
 
@@ -168,6 +197,11 @@ def train_network(
             if train_inputs.reverse_complement:
                 flip = (torch.rand(len(indices), generator=generator) < 0.5).to(device)
                 batch = torch.where(flip.unsqueeze(1), reverse_complement(batch), batch)
+            elif hasattr(train_inputs, "batch_rc"):
+                flip = (torch.rand(len(indices), generator=generator) < 0.5).to(device)
+                batch = torch.where(
+                    flip.unsqueeze(1), train_inputs.batch_rc(indices), batch
+                )
             with _autocast(device):
                 logits = network(batch).float()
             loss = nn.functional.binary_cross_entropy_with_logits(
@@ -209,3 +243,49 @@ def seed_everything(seed: int, threads: Optional[int] = None):
     torch.manual_seed(seed)
     if threads is not None:
         torch.set_num_threads(threads)
+
+
+COMPLEMENT = str.maketrans("ACGTRYSWKMBDHVN", "TGCAYRSWMKVHDBN")
+
+
+def reverse_complement_text(sequence: str) -> str:
+    """Return the opposite strand of a sequence written with IUPAC letters."""
+    return sequence.translate(COMPLEMENT)[::-1]
+
+
+def tokenize_reads(
+    sequences: List[str],
+    tokenizer,
+    device: torch.device,
+    max_length: int = 192,
+    chunk: int = 20000,
+) -> TokenInputs:
+    """Tokenize reads on both strands into padded token-id tensors.
+
+    Args:
+        sequences: Uppercase reads.
+        tokenizer: A Hugging Face tokenizer.
+        device: Where the tensors will live.
+        max_length: Longest token sequence kept.
+        chunk: Reads tokenized per call.
+
+    Returns:
+        TokenInputs holding both strands of every read.
+    """
+
+    def encode(texts: List[str]) -> np.ndarray:
+        blocks = []
+        for start in range(0, len(texts), chunk):
+            batch = tokenizer(
+                texts[start : start + chunk],
+                padding="max_length",
+                truncation=True,
+                max_length=max_length,
+                return_attention_mask=False,
+            )
+            blocks.append(np.asarray(batch["input_ids"], dtype=np.int32))
+        return np.concatenate(blocks)
+
+    forward = encode(sequences)
+    reverse = encode([reverse_complement_text(text) for text in sequences])
+    return TokenInputs(forward, reverse, device)

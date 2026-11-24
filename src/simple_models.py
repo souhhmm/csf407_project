@@ -19,6 +19,7 @@ from src.classifiers import (
     is_compatible,
     make_estimator,
     predict_scores,
+    save_scores,
     score_metrics,
     select_configuration,
 )
@@ -32,7 +33,7 @@ from src.plots import (
     plot_generalisation,
     plot_model_heatmap,
 )
-from src.splits import EVALUATION_SPLITS, load_splits
+from src.splits import evaluation_splits, load_splits
 
 
 POSITIVE_LABEL = "pathogenic"
@@ -40,6 +41,11 @@ BASELINES = ("gc_fraction", "ambiguous_letters", "composition_k1", "composition_
 CONTROL_PARAMS = {"C": 0.01}
 CONTROL_REPEATS = 5
 GROUP_COLUMNS = ["group", "model", "representation", "k"]
+
+
+def _tag(meta: dict, seed: int) -> str:
+    """Name a configuration and seed for its saved per-read scores."""
+    return "_".join(str(meta[key]) for key in ("group", "model", "representation", "k")) + "_s" + str(seed)
 
 
 def _baseline_tables(sequences_by_split: Dict[str, List[str]]) -> dict:
@@ -59,10 +65,13 @@ def _baseline_tables(sequences_by_split: Dict[str, List[str]]) -> dict:
     return tables
 
 
-def _evaluate(estimator, model: str, tables: dict, context: dict) -> dict:
+def _evaluate(estimator, model: str, tables: dict, context: dict, tag: str) -> dict:
     row = {}
-    for split in ("train",) + tuple(EVALUATION_SPLITS):
+    kept = {}
+    for split in ("train",) + tuple(context["eval_splits"]):
         scores = predict_scores(estimator, model, tables[split])
+        if split != "train":
+            kept[split] = scores
         labels = context["labels"][split]
         for name, value in score_metrics(labels, scores).items():
             row[split + "_" + name] = value
@@ -76,6 +85,7 @@ def _evaluate(estimator, model: str, tables: dict, context: dict) -> dict:
             )
             row[split + "_auc_low"] = low
             row[split + "_auc_high"] = high
+    save_scores(context.get("score_dir"), tag, kept)
     return row
 
 
@@ -121,7 +131,7 @@ def _run_configuration(
                 **meta,
                 "seed": seed,
                 "params": json.dumps(params),
-                **_evaluate(estimator, model, tables, context),
+                **_evaluate(estimator, model, tables, context, _tag(meta, seed)),
             }
         )
     print(
@@ -174,7 +184,9 @@ def _run_control(representation: str, k: int, tables: dict, context: dict) -> li
                 **meta,
                 "seed": seed,
                 "params": json.dumps(CONTROL_PARAMS),
-                **_evaluate(estimator, "logistic_regression", tables, context),
+                **_evaluate(
+                    estimator, "logistic_regression", tables, context, _tag(meta, seed)
+                ),
             }
         )
     print(
@@ -374,6 +386,9 @@ def run_simple_models(
     n_jobs: int = 1,
     trees: int = 200,
     bootstrap: int = 100,
+    train_limit: int = 0,
+    fit_limit: int = 0,
+    save_per_read: bool = True,
 ) -> dict:
     """Run baselines, controls, and simple models over every representation.
 
@@ -391,6 +406,10 @@ def run_simple_models(
         n_jobs: CPU workers for random forests.
         trees: Number of trees per random forest.
         bootstrap: Genome-level bootstrap resamples per interval; 0 disables.
+        train_limit: Use only the first this-many (shuffled) training reads; 0 keeps all.
+        fit_limit: Learn weights and word vectors from only this many training
+            reads; 0 uses every training read the models see.
+        save_per_read: Whether to save every read's score for genome-level analysis.
 
     Returns:
         The saved settings and runtime.
@@ -405,9 +424,13 @@ def run_simple_models(
         raise ValueError("Give at least one seed.")
     started = time.perf_counter()
     records, manifest = load_splits(splits_dir)
+    if train_limit:
+        records["train"] = records["train"][:train_limit]
     names = list(records)
     sequences = {name: [row["sequence"] for row in records[name]] for name in names}
     context = {
+        "eval_splits": evaluation_splits(manifest),
+        "score_dir": output_dir / "scores" if save_per_read else None,
         "labels": {
             name: np.asarray(
                 [int(row["label"] == POSITIVE_LABEL) for row in records[name]]
@@ -450,6 +473,8 @@ def run_simple_models(
             epochs,
             seeds[0],
             workers,
+            fit_limit,
+            train_limit,
         )
         for representation in REPRESENTATIONS:
             tables = {
@@ -489,6 +514,14 @@ def run_simple_models(
         "n_jobs": n_jobs,
         "trees": trees,
         "bootstrap": bootstrap,
+        "train_limit": train_limit,
+        "fit_limit": fit_limit,
+        "train_class_counts": {
+            str(label): int(count)
+            for label, count in zip(
+                *np.unique([r["label"] for r in records["train"]], return_counts=True)
+            )
+        },
         "splits_dir": str(splits_dir),
         "splits_manifest": manifest,
         "software": {

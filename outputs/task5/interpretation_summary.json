@@ -1,0 +1,75 @@
+{
+  "fit_reads": 400000,
+  "word_effects": {
+    "k3": {
+      "spearman_genome_auc": 0.8252467253497697,
+      "top_direction_agreement": {
+        "more_in_nonpathogenic": 0.92,
+        "more_in_pathogenic": 0.92
+      },
+      "genomes_train_nonpathogenic_pathogenic": [
+        45,
+        310
+      ],
+      "genomes_held_out_nonpathogenic_pathogenic": [
+        12,
+        78
+      ],
+      "significant_in_train_q05": 16
+    },
+    "k4": {
+      "spearman_genome_auc": 0.8875257054457557,
+      "top_direction_agreement": {
+        "more_in_nonpathogenic": 1.0,
+        "more_in_pathogenic": 0.98
+      },
+      "genomes_train_nonpathogenic_pathogenic": [
+        45,
+        310
+      ],
+      "genomes_held_out_nonpathogenic_pathogenic": [
+        12,
+        78
+      ],
+      "significant_in_train_q05": 88
+    },
+    "k6": {
+      "spearman_genome_auc": 0.8642432858536986,
+      "top_direction_agreement": {
+        "more_in_nonpathogenic": 1.0,
+        "more_in_pathogenic": 1.0
+      },
+      "genomes_train_nonpathogenic_pathogenic": [
+        45,
+        310
+      ],
+      "genomes_held_out_nonpathogenic_pathogenic": [
+        12,
+        78
+      ],
+      "significant_in_train_q05": 1365
+    }
+  },
+  "genome_gc_auc": {
+    "held_out": 0.40705128205128205,
+    "train": 0.4493906810035842
+  },
+  "lr_coefficient_vs_genome_effect_spearman_k6": 0.6343883449826501,
+  "embedding_rc_tests_k6": {
+    "word2vec_overlapping": {
+      "rc_cosine_mean": 0.19326616823673248,
+      "random_pair_cosine_mean": 0.16682475805282593,
+      "rc_is_nearest_neighbour": 0.000248015873015873
+    },
+    "word2vec_strided": {
+      "rc_cosine_mean": 0.3460274338722229,
+      "random_pair_cosine_mean": 0.22047749161720276,
+      "rc_is_nearest_neighbour": 0.001736111111111111
+    },
+    "count_svd_cooccurrence": {
+      "rc_cosine_mean": 0.8689438387666519,
+      "random_pair_cosine_mean": 0.8110174483164939,
+      "rc_is_nearest_neighbour": 0.003720238095238095
+    }
+  }
+}
