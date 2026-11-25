@@ -19,3 +19,9 @@ presentation/
 /data/models
 /results/task4
 /.venv-gpu
+
+# Local submission files
+/docs
+/output
+/latex_template
+/memory_and_progress.md
